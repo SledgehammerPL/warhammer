@@ -41,6 +41,7 @@ class WarriorLevelTemplate(models.Model):
     willpower = models.PositiveIntegerField()
     skills = models.PositiveIntegerField()
     pinning = models.PositiveIntegerField()
+    move = models.PositiveIntegerField()
     warrior_type = models.ForeignKey(WarriorType, on_delete=models.RESTRICT)
 
     def __str__(self):
@@ -88,7 +89,7 @@ class Equipment(models.Model):
 
 class CharacterParameter(models.Model):
     created = models.DateTimeField(auto_now_add=True)
-    player = models.ForeignKey('people.Person', on_delete = models.RESTRICT)
+    character = models.ForeignKey(Character, on_delete = models.RESTRICT)
     parameter = models.ForeignKey(Parameter, on_delete = models.RESTRICT)
     value = models.IntegerField()
     desc = models.CharField(max_length=256) 
