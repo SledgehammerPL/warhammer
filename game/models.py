@@ -19,7 +19,7 @@ class Parameter(models.Model):
     name = models.CharField(max_length=100, unique=True)
     short_name = models.CharField(max_length=2, unique=True)
     desc = models.TextField() 
-
+  
     def __str__(self):
         return "{}".format(self.short_name)
 
@@ -55,6 +55,16 @@ class Skill(models.Model):
     def __str__(self):
         return "{}".format(self.name)
 
+class Party(models.Model):
+    name = models.CharField(max_length=100, unique = True)
+
+    class Meta:
+        verbose_name = "party"
+        verbose_name_plural = "parties"
+
+    def __str__(self):
+        return self.name
+
 class Character(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     player = models.ForeignKey('people.Person', on_delete = models.RESTRICT)
@@ -62,6 +72,7 @@ class Character(models.Model):
     warrior_type = models.ForeignKey(WarriorType, on_delete=models.RESTRICT)
     battle_level = models.PositiveIntegerField(default=1)
     starting_wounds = models.PositiveIntegerField()
+    party = models.ForeignKey(Party, on_delete=models.SET_NULL, null = True)
     
     def __str__(self):
         return "{}".format(self.name)
