@@ -13,4 +13,7 @@ admin.site.register(Gold)
 admin.site.register(Item)
 admin.site.register(Equipment)
 admin.site.register(CharacterParameter)
+admin.site.register(Journey)
+admin.site.register(EventType)
+admin.site.register(Event)
 

@@ -38,4 +38,9 @@ def create_character(request):
     context = {
         'form': form
     }
-    return render (request,'game/newcharacter.html', context)
+    return render (request,'game/create_character.html', context)
+
+def create_party():
+    context = {
+    }
+    return render (request,'game/create_party.html', context)

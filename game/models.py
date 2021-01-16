@@ -41,6 +41,7 @@ class WarriorLevelTemplate(models.Model):
     willpower = models.PositiveIntegerField()
     skills = models.PositiveIntegerField()
     pinning = models.PositiveIntegerField()
+    power = models.PositiveIntegerField()
     move = models.PositiveIntegerField()
     warrior_type = models.ForeignKey(WarriorType, on_delete=models.RESTRICT)
 
@@ -93,5 +94,25 @@ class CharacterParameter(models.Model):
     parameter = models.ForeignKey(Parameter, on_delete = models.RESTRICT)
     value = models.IntegerField()
     desc = models.CharField(max_length=256) 
+ 
+class Journey(models.Model):
+    destination = models.CharField(max_length=20)
+    weeks = models.PositiveIntegerField()
+    rolls = models.PositiveIntegerField()
+    def __str__(self):
+        return ("{} - {} weeks => {} rolls".format(self.destination,self.weeks, self.rolls))
 
+class EventType(models.Model):
+    name = models.CharField(max_length=50)
+    def __str__(self):
+        return self.name
+
+class Event(models.Model):
+    number = models.PositiveIntegerField()
+    event_type = models.ForeignKey(EventType, on_delete = models.RESTRICT)
+    title = models.CharField(max_length=100)
+    desc = models.TextField(blank=True)
+
+    def __str__(self):
+        return ("{}: {} {}".format(self.event_type.name, self.number, self.title))
 
