@@ -1,0 +1,48 @@
+{% extends 'game/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block head %}
+  <script>
+    function shoot(bs) {
+      var dice = Math.ceil(Math.random()*6);
+      if (dice >= bs) {
+        alert("HIT!");
+      } else {
+        alert("MISS");
+      }
+    }
+  </script>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+<div class="row justify-content-center">
+  <div class="col-12">
+    <h1 class="mt-2">{{ character.name }}</h1>
+    <h4>{{ character.warrior_type }} ({{ character.warrior_type.race}})</h4>
+    <div>{% if character.leader == character %}Leader{% else %}Member{% endif %} of {{ character.leader }}'s Party{% if other_party_members %} with 
+      {% for member in other_party_members %}
+      {{ member }},
+      {% endfor %}{% endif %}
+    </div>
+    <hr class="mt-0 mb-4">
+    <div><label class="col-4 col-sm-3 col-md-2">Wounds:</label>{{ parameters.wounds.value }}</div>
+    <div><label class="col-4 col-sm-3 col-md-2">Move:</label> {{ parameters.move.value }}</div>
+    <div><label class="col-4 col-sm-3 col-md-2">Weapon Skill:</label> {{ parameters.weapon_skill.value }}</div>
+    <div><label class="col-4 col-sm-3 col-md-2">Balistic Skill:</label> {{ parameters.ballistic_skill.value }}+<span class="col-1"></span><button type="button" class="btn btn-primary" onclick="shoot({{ parameters.ballistic_skill.value }})">SHOOT</button></div>
+    <div><label class="col-4 col-sm-3 col-md-2">Strength:</label> {{ parameters.strength.value }}</div>
+    <div><label class="col-4 col-sm-3 col-md-2">Toughness:</label> {{ parameters.toughness.value }}</div>
+    <div><label class="col-4 col-sm-3 col-md-2">Initiative:</label> {{ parameters.initiative.value }}</div>
+    <div><label class="col-4 col-sm-3 col-md-2">Attacks:</label> {{ parameters.attacks.value }}</div>
+    <div><label class="col-4 col-sm-3 col-md-2">Luck:</label> {{ parameters.luck.value }}</div>
+    <div><label class="col-4 col-sm-3 col-md-2">Willpower:</label> {{ parameters.willpower.value }}</div>
+    <div><label class="col-4 col-sm-3 col-md-2">Equipment:</label>
+      {% for equipment in equipments %}
+      <div>{{ equipment }} </div>
+      {% endfor %}
+    </div>
+    <div><label class="col-4 col-sm-3 col-md-2">Pinning:</label> {% if parameters.pinning.value > 0 %}Breaks on a roll of {{ parameters.pinning.value }}+{% else %}Automatic pinning{% endif %}</div>
+
+  </div>
+</div>
+{% endblock %}

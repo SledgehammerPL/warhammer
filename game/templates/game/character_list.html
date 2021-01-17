@@ -1,0 +1,20 @@
+{% extends 'game/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block head %}
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+<div class="row justify-content-center">
+  <div class="col-12">
+    <h1 class="mt-2">Your characters</h1>
+    <hr class="mt-0 mb-4">
+    <ul>
+    {% for character in characters %}
+    <li><a href="/characters/{{ character.id }}">{{ character }}</a> [{{ character.party }}]</li>
+    {% endfor %}
+    </ul>
+  </div>
+</div>
+{% endblock %}

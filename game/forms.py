@@ -52,15 +52,15 @@ class ChooseCharacterForm(forms.Form):
 
 
 class PartyLeaderForm(forms.Form):
-    characters = forms.ModelChoiceField(queryset=Character.objects.all())
+    leader = forms.ModelChoiceField(queryset=Character.objects.all())
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout()
         self.helper.layout.append(
             Column(
-                Row(Field('characters')),
-                Submit('submit','Wybierz cel'),
+                Row(Field('leader')),
+                Submit('submit','Wybierz lidera'),
             )
         )
 
@@ -70,7 +70,6 @@ class NewCharacterForm(forms.Form):
     name = forms.CharField(label = "Name", max_length=100, widget=forms.TextInput())
     player = forms.ModelChoiceField(queryset=Person.objects.filter(is_superuser=False), label="Player")
     warrior_type = forms.ModelChoiceField(queryset=WarriorType.objects.all(), label="Warrior Type")
-    party = forms.ModelChoiceField(queryset=Party.objects.all(), label="Party", required = False)
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
@@ -80,59 +79,10 @@ class NewCharacterForm(forms.Form):
                 Row(Field('name')),
                 Row(Field('player')),
                 Row(Field('warrior_type')),
-                Row(Field('party')),
                 Submit('submit','Dodaj nową postać'),
             )
         )
 
-
-class NewPartyForm(forms.Form):
-    name = forms.CharField(label = "Name", max_length=100, widget=forms.TextInput(), required = True)
-    party_members = forms.ModelMultipleChoiceField(queryset=Character.objects.filter(party__isnull=True))
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = Layout()
-        self.helper.layout.append(
-            Column(
-                Row(Field('name')),
-                Row(Field('party_members')),
-                Submit('submit','Utwórz nową drużynę'),
-            )
-        )
-
-class ChoosePartyForm(forms.Form):
-    party = forms.ModelChoiceField(queryset=Party.objects.all())
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = Layout()
-        self.helper.layout.append(
-            Column(
-                Row(Field('party')),
-                Submit('submit','Wybież drużynę'),
-            )
-        )
-       
-class DestroyPartyForm(forms.Form):
-    parties_to_destroy = forms.ModelMultipleChoiceField(queryset=Party.objects.all())
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.helper = FormHelper()
-        self.helper.layout = Layout()
-        self.helper.layout.append(
-            Column(
-                Row(Field('parties_to_destroy')),
-                Submit('submit','Rozwiąż drużyny'),
-            )
-        )
-
-
-class PartyForm(forms.ModelForm):
-    """Model Form for Party model."""
-    class Meta:
-        model = Party
-        fields = ['name']
 
 
 class CharacterForm(forms.ModelForm):

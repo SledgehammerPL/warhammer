@@ -26,7 +26,6 @@ def create_character(request):
             except ObjectDoesNotExist:
                 warrior_type = form.cleaned_data['warrior_type']
                 template = WarriorLevelTemplate.objects.filter(level=1,warrior_type=warrior_type)[0]
-                party = form.cleaned_data['party']
                 starting_wounds =  sum(randint(1,6) for i in range(template.wounds_dice))+template.wounds_modifier
                 try:
                     warrior = Character.objects.create(name= form.cleaned_data['name'],player=form.cleaned_data['player'],warrior_type=warrior_type, battle_level=1,starting_wounds = starting_wounds, party = party)
@@ -53,60 +52,6 @@ def create_character(request):
     }
     return render (request,'game/create_character.html', context)
 
-from django.views.generic.edit import CreateView
-from .forms import PartyForm, CharacterForm
-from django.urls import reverse_lazy
-from django.forms import inlineformset_factory
-
-@login_required
-class PartyCreateView(CreateView):
-    model = Party
-    form_class = PartyForm
-    success_url = reverse_lazy('success')
-    template_name = 'game/team_create.html'
-
-    def get(self, request, *args, **kwargs):
-        """Overriding get method to handle inline formset."""
-        # Setup the formset for Character
-        CharacterFormSet = inlineformset_factory(
-            parent_model=Party,
-            model=Character,
-            form=CharacterForm,
-            can_delete=True,
-            extra=1,
-        )
-
-        self.object = None
-        form = self.get_form(self.get_form_class())
-        member_forms = CharacterFormSet()
-
-        return self.render_to_response(
-            self.get_context_data(
-                form=form,
-                member_forms=member_forms,
-            )
-        )
-
-    def post(self, request, *args, **kwargs):
-        """Overriding post method to handle inline formsets."""
-        # Setup the formset for PlanCost
-        CharacterFormSet = inlineformset_factory(
-            parent_model=Party,
-            model=Character,
-            form=CharacterForm,
-            can_delete=True,
-            extra=1,
-        )
-
-        self.object = None
-        form = self.get_form(self.get_form_class())
-        member_forms = CharacterFormSet(self.request.POST)
-
-        if form.is_valid() and member_forms.is_valid():
-            return self.form_valid(form, member_forms)
-
-        return self.form_invalid(form, member_forms) 
-
 @login_required
 def character_list(request):
     characters = Character.objects.filter(player=request.user)
@@ -119,7 +64,8 @@ def character_list(request):
 def character_profile(request, character):
     try:
         character = Character.objects.get(pk=character, player=request.user)
-        other_party_members = character.party.character_set.exclude(id=character.id)
+        other_party_members = Character.objects.filter(leader =character.leader).exclude(id=character.id)
+
         parameters = {
                 'wounds' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'W').aggregate(value=Sum('value')),
                 'move' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'M').aggregate(value=Sum('value')),
@@ -144,99 +90,32 @@ def character_profile(request, character):
 
 @login_required
 def create_party(request):
-    if request.method == 'POST':
-        form = NewPartyForm(request.POST)
-        if form.is_valid():
-            try:
-                party = Party.objects.create(name=form.cleaned_data['name'])
-                members = form.cleaned_data['party_members']
-                for party_member in members:
-                   party_member.party = party
-                   party_member.save()
-                form = NewPartyForm()
-            except ObjectDoesNotExist:
-                pass
-    else:
-        form = NewPartyForm()
-    context = {
-        'form': form
-    }
-
-    return render (request,'game/simple_form.html', context)
-
-@login_required
-def destroy_party(request):
-    if request.method == 'POST':
-        form = DestroyPartyForm(request.POST)
-        if form.is_valid():
-            try:
-                for party in form.cleaned_data['parties_to_destroy']:
-                   for character in party.character_set.all():
-                       character.party_leader=False
-                       character.save()
-                   party.delete()
-                form = DestroyPartyForm()
-            except ObjectDoesNotExist:
-                pass
-    else:
-        form = DestroyPartyForm()
-
-    context = {
-        'form': form
-    }
-
-    return render (request,'game/simple_form.html', context)
-
-@login_required
-def join_to_party(request):
-    try: 
+    try:
         character = Character.objects.get(pk=request.session['character_id'])
-        if request.method == 'POST':
-            form = ChoosePartyForm(request.POST)
-            if form.is_valid():
-                if form.cleaned_data['party']:
-                    character.party = form.cleaned_data['party']
-                    character.save()
-                    return redirect('/')
-        else:
-            form = ChoosePartyForm()
 
+        if request.method == 'POST':
+            form = NewPartyForm(request.POST)
+            if form.is_valid():
+                try:
+                    party = Party.objects.create(leader=character )
+                    members = form.cleaned_data['party_members']
+                    for party_member in members:
+                        party_member.party = party
+                        party_member.save()
+                    form = NewPartyForm()
+                except ObjectDoesNotExist:
+                    pass
+                return redirect('/')
+        else:
+            form = NewPartyForm()
         context = {
-            'form': form
-        }
+                'form': form
+                }
 
         return render (request,'game/simple_form.html', context)
-
     except ObjectDoesNotExist:
-         return redirect('/x')
+        return redirect('/x')
 
-@login_required
-def leave_the_party(request):
-    try: 
-        character = Character.objects.get(pk=request.session['character_id'])
-        if character.party is not None:
-            if request.method == 'POST':
-                form = YesNoForm(request.POST, question="Are you sure you want to leave the party {}?".format(character.party))
-
-                if form.is_valid():
-                    logger.debug("{}".format(form.cleaned_data))
-                    logger.debug("{}".format(form.cleaned_data['answer']=='True'))
-
-                    if form.cleaned_data['answer']=='True':
-                        character.party= None
-                        character.save()
-                    return redirect('/')
-            else:
-                form = YesNoForm(question="Are you sure you want to leave the party {}?".format(character.party))
-
-            context = {
-                'form' : form,
-            }
-            return render (request,'game/simple_form.html', context)
-        else:
-            return redirect('/join_to_party/')
-    except ObjectDoesNotExist:
-         return redirect('/')
 
 @login_required
 def choose_character(request):
@@ -260,12 +139,48 @@ def choose_character(request):
 
 
 @login_required
-def choose_party_leader(request):
-    form = PartyLeaderForm()
-    context = {
-        'form' : form,
-    }
-    return render (request,'game/simple_form.html', context)
+def choose_leader(request):
+    try: 
+        you = Character.objects.get(pk=request.session['character_id'])
+        if request.method == 'POST':
+            form = PartyLeaderForm(request.POST)
+
+            if form.is_valid():
+                you.leader = form.cleaned_data['leader']
+                you.save()
+                return redirect('/')
+        else:
+            form = PartyLeaderForm()
+
+        context = {
+            'form' : form,
+        }
+        return render (request,'game/simple_form.html', context)
+    except ObjectDoesNotExist:
+         return redirect('/')
+
+@login_required
+def make_own_party(request):
+    try: 
+        you = Character.objects.get(pk=request.session['character_id'])
+        if request.method == 'POST':
+            form = YesNoForm(request.POST, question="Are you sure you want to leave the  {}'s party?".format(you.leader))
+
+            if form.is_valid():
+                if form.cleaned_data['answer']=='True':
+                    for character in  Character.objects.filter(leader=you):
+                        character.leader=character
+                        character.save()
+                return redirect('/')
+        else:
+            form = YesNoForm(request.POST, question="Are you sure you want to leave the  {}'s party?".format(you.leader))
+
+        context = {
+            'form' : form,
+        }
+        return render (request,'game/simple_form.html', context)
+    except ObjectDoesNotExist:
+         return redirect('/')
 
 @login_required
 def trip_to(request):
