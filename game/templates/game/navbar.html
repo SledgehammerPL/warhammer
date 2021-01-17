@@ -1,20 +1,20 @@
 <nav class="navbar navbar-expand-md navbar-dark bg-dark">
-      <a class="navbar-brand" href="/">WarHammer Helper</a>
+  <a class="navbar-brand" href="/characters/{{ request.session.character_id }}">{{ request.session.character_name }}</a>
       <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample04" aria-controls="navbarsExample04" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
       </button>
 
       <div class="collapse navbar-collapse" id="navbarsExample04">
+        {% if user.is_authenticated %}
         <ul class="navbar-nav mr-auto">
-          <li class="nav-item">
+          <!-- li class="nav-item">
             <a class="nav-link" href="/about/">O nas</a>
-          </li>
+          </li -->
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Postać</a>
             <div class="dropdown-menu" aria-labelledby="dropdown04">
-              <a class="dropdown-item" href="/create_character/">Utwórz nową postać</a>
-              <a class="dropdown-item" href="/add_character_to_party/">Dodaj postać do drużyny</a>
-              <a class="dropdown-item" href="/remove_character_from_party/">Odłącz postać od drużyny</a>
+              <a class="dropdown-item" href="/join_to_party/">Dodaj do drużyny</a>
+              <a class="dropdown-item" href="/leave_the_party/">Wystąp z drużyny</a>
               <!-- a class="dropdown-item" href="/regulamin-wplat/">Regulamin wpłat</a>
               <a class="dropdown-item" href="/privacy/">Polityka prywatności</a -->
             </div>
@@ -24,6 +24,7 @@
             <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Drużyna</a>
             <div class="dropdown-menu" aria-labelledby="dropdown04">
               <a class="dropdown-item" href="/create_party/">Utwórz drużynę</a>
+              <a class="dropdown-item" href="/choose_party_leader//">Wybierz lidera drużyny</a>
               <a class="dropdown-item" href="/destroy_party/">Rozwiąż drużynę</a>
               <a class="dropdown-item" href="/trip_to/">Podróż do ...</a>
               <!-- a class="dropdown-item" href="/regulamin-wplat/">Regulamin wpłat</a>
@@ -53,6 +54,23 @@
           <!- li class="nav-item">
             <a class="nav-link disabled" href="#">Disabled</a>
           </li -->
+        </ul>
+       {% endif %}
+       <ul class="navbar-nav ml-auto">
+          <li class="nav-item dropdown">
+            <a class="nav-link dropdown-toggle" href="#" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ user }}</a>
+            <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdown04">
+              {% if user.is_authenticated %}
+              <a class="dropdown-item" href="/accounts/logout/">Logout</a>
+              {% else %}
+              <a class="dropdown-item" href="/accounts/login/">Login</a>
+              {% endif %}
+              <a class="dropdown-item" href="/characters/">Lista postaci</a>
+              <a class="dropdown-item" href="/choose_character/">Wybierz postać</a>
+              <a class="dropdown-item" href="/create_character/">Utwórz nową postać</a>
+              <a class="dropdown-item" href="/accounts/profile/">Profil</a>
+            </div>
+          </li>
         </ul>
       </div>
     </nav>
