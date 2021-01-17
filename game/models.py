@@ -72,7 +72,7 @@ class Character(models.Model):
     warrior_type = models.ForeignKey(WarriorType, on_delete=models.RESTRICT)
     battle_level = models.PositiveIntegerField(default=1)
     starting_wounds = models.PositiveIntegerField()
-    leader = models.ForeignKey("self", on_delete=models.RESTRICT, related_name ='leader_set')
+    leader = models.ForeignKey("self", on_delete=models.RESTRICT, related_name ='leader_set', null = True)
     def __str__(self):
         return "{}".format(self.name)
 

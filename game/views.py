@@ -28,7 +28,9 @@ def create_character(request):
                 template = WarriorLevelTemplate.objects.filter(level=1,warrior_type=warrior_type)[0]
                 starting_wounds =  sum(randint(1,6) for i in range(template.wounds_dice))+template.wounds_modifier
                 try:
-                    warrior = Character.objects.create(name= form.cleaned_data['name'],player=form.cleaned_data['player'],warrior_type=warrior_type, battle_level=1,starting_wounds = starting_wounds, party = party)
+                    warrior = Character.objects.create(name= form.cleaned_data['name'],player=request.user,warrior_type=warrior_type, battle_level=1,starting_wounds = starting_wounds)
+                    warrior.leader = warrior
+                    warrior.save()
                     weapon_skill = CharacterParameter.objects.create(value=template.weapon_skill,parameter=Parameter.objects.get(short_name='WS'), character = warrior, description = 'initial value of weapon skill')
                     ballistic_skill = CharacterParameter.objects.create(value=template.ballistic_skill,parameter=Parameter.objects.get(short_name='BS'), character = warrior, description = 'initial value of ballistic skill')
                     strength = CharacterParameter.objects.create(value=template.strength,parameter=Parameter.objects.get(short_name='S'), character = warrior, description = 'initial value of strength')
@@ -42,6 +44,8 @@ def create_character(request):
                     damage_dice = CharacterParameter.objects.create(value=template.damage_dice,parameter=Parameter.objects.get(short_name='DD'), character = warrior, description = 'initial value of damage dice')
                     skills = CharacterParameter.objects.create(value=template.skills,parameter=Parameter.objects.get(short_name='SK'), character = warrior, description = 'initial value of skills')
                     move = CharacterParameter.objects.create(value=template.move,parameter=Parameter.objects.get(short_name='M'), character = warrior, description = 'initial value of move')
+                    request.session['character_id']=warrior.id
+                    request.session['character_name']=warrior.name
                     form = NewCharacterForm()
                 except IndexError:
                     pass
@@ -63,24 +67,24 @@ def character_list(request):
 @login_required
 def character_profile(request, character):
     try:
-        character = Character.objects.get(pk=character, player=request.user)
-        other_party_members = Character.objects.filter(leader =character.leader).exclude(id=character.id)
+        you = Character.objects.get(pk=character, player=request.user)
+        other_party_members = Character.objects.filter(leader =you.leader).exclude(id=you.id)
 
         parameters = {
-                'wounds' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'W').aggregate(value=Sum('value')),
-                'move' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'M').aggregate(value=Sum('value')),
-                'weapon_skill' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'WS').aggregate(value=Sum('value')),
-                'ballistic_skill' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'BS').aggregate(value=Sum('value')),
-                'strength' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'S').aggregate(value=Sum('value')),
-                'toughness' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'T').aggregate(value=Sum('value')),
-                'initiative' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'I').aggregate(value=Sum('value')),
-                'attacks' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'A').aggregate(value=Sum('value')),
-                'luck' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'L').aggregate(value=Sum('value')),
-                'willpower' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'WP').aggregate(value=Sum('value')),
-                'pinning' :  CharacterParameter.objects.filter(character=character, parameter__short_name = 'EP').aggregate(value=Sum('value')),
+                'wounds' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'W').aggregate(value=Sum('value')),
+                'move' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'M').aggregate(value=Sum('value')),
+                'weapon_skill' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'WS').aggregate(value=Sum('value')),
+                'ballistic_skill' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'BS').aggregate(value=Sum('value')),
+                'strength' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'S').aggregate(value=Sum('value')),
+                'toughness' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'T').aggregate(value=Sum('value')),
+                'initiative' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'I').aggregate(value=Sum('value')),
+                'attacks' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'A').aggregate(value=Sum('value')),
+                'luck' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'L').aggregate(value=Sum('value')),
+                'willpower' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'WP').aggregate(value=Sum('value')),
+                'pinning' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'EP').aggregate(value=Sum('value')),
                 }
         context = {
-           'character' : character,
+           'character' : you,
            'parameters' : parameters,
            'other_party_members' : other_party_members,
         }
@@ -164,16 +168,16 @@ def make_own_party(request):
     try: 
         you = Character.objects.get(pk=request.session['character_id'])
         if request.method == 'POST':
-            form = YesNoForm(request.POST, question="Are you sure you want to leave the  {}'s party?".format(you.leader))
+            form = YesNoForm(request.POST, question="Are you sure you want to leave the {}'s party?".format(you.leader))
 
             if form.is_valid():
                 if form.cleaned_data['answer']=='True':
-                    for character in  Character.objects.filter(leader=you):
+                    for character in  Character.objects.filter(leader=you.leader):
                         character.leader=character
                         character.save()
                 return redirect('/')
         else:
-            form = YesNoForm(request.POST, question="Are you sure you want to leave the  {}'s party?".format(you.leader))
+            form = YesNoForm(question="Are you sure you want to leave the  {}'s party?".format(you.leader))
 
         context = {
             'form' : form,
