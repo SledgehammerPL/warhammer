@@ -46,6 +46,7 @@ def create_character(request):
                     move = CharacterParameter.objects.create(value=template.move,parameter=Parameter.objects.get(short_name='M'), character = warrior, description = 'initial value of move')
                     request.session['character_id']=warrior.id
                     request.session['character_name']=warrior.name
+                    request.session['leader']=True
                     form = NewCharacterForm()
                 except IndexError:
                     pass
@@ -132,6 +133,7 @@ def choose_character(request):
         if form.is_valid():
             request.session['character_id']=form.cleaned_data['character'].id
             request.session['character_name']=form.cleaned_data['character'].name
+            request.session['leader']=form.cleaned_data['character'] == form.cleaned_data['character'].leader
 
     else:
         form = ChooseCharacterForm(user=request.user)
@@ -152,6 +154,7 @@ def choose_leader(request):
             if form.is_valid():
                 you.leader = form.cleaned_data['leader']
                 you.save()
+                request.session['leader']=you == you.leader
                 return redirect('/')
         else:
             form = PartyLeaderForm()
@@ -175,6 +178,7 @@ def make_own_party(request):
                     for character in  Character.objects.filter(leader=you.leader):
                         character.leader=character
                         character.save()
+                        request.session['leader']=True
                 return redirect('/')
         else:
             form = YesNoForm(question="Are you sure you want to leave the  {}'s party?".format(you.leader))
