@@ -117,10 +117,19 @@ class EventType(models.Model):
         return self.name
 
 class EventTable(models.Model):
+    class Whom(models.TextChoices):
+        ALL = 'ALL'
+        ANY = 'ANY'
+        SOME = 'SOME'
+        ONE = 'ONE'
+        EACH = 'EACH'
+
     number = models.PositiveIntegerField()
     event_type = models.ForeignKey(EventType, on_delete = models.RESTRICT)
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
+    table = models.TextField()
+    whom = models.CharField(max_length=4,choices = Whom.choices, default = Whom.ONE)
 
     def __str__(self):
         return ("{}: {} {}".format(self.event_type.name, self.number, self.title))

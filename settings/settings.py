@@ -44,7 +44,6 @@ INSTALLED_APPS = [
     'crispy_forms',
     'channels',
 
-    'chat',
     'game',
     'people',
 ]

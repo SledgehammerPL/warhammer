@@ -9,6 +9,7 @@ from django.contrib import messages
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.template import Template, Context
+import json
 
 import logging
 logger = logging.getLogger('error_logger')
@@ -213,15 +214,19 @@ def trip_to(request):
             channel_layer = get_channel_layer()
             trip_to = form.cleaned_data['destination']
             for roll in range(1,trip_to.rolls +1):
-                event = EventTable.objects.get(number="{}{}".format(randint(1,6),randint(1,6)),event_type__name='Hazards')
-#                event = EventTable.objects.get(number="{}{}".format(2,6),event_type__name='Hazards')
+#                event = EventTable.objects.get(number="{}{}".format(randint(1,6),randint(1,6)),event_type__name='Hazards')
+                event = EventTable.objects.get(number="{}{}".format(1,2),event_type__name='Hazards')
 
                 description_context = {
-                    'party_1D6' : randint(1,6)
+                    'party_1D6' : randint(1,6),
+                    'warrior' : Character.objects.filter(leader=you.leader)[randrange(0,Character.objects.filter(leader=you.leader).count())],
                 }
+                if event.whom == 'ONE' or event.whom == 'ALL':
+                    description_context['party_choice']=json.loads(event.table)[str(randint(1,6))]
                 for character in Character.objects.filter(leader=you.leader):
+                    description_context['warrior_choice'] = json.loads(event.table)[str(randint(1,6))]
+
                     description_context['warrior_1D6'] = randint(1,6)
-                    description_context['warrior'] = Character.objects.filter(leader=you.leader)[randrange(0,Character.objects.filter(leader=you.leader).count())]
                     description = Template(event.description).render(Context(description_context))
                     Event.objects.create(character = character, event = event, description = description)
                     messages.info(request, 'added event {} to {}'.format(event.title, character))
