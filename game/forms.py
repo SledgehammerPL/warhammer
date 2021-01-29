@@ -1,12 +1,12 @@
 from django import forms
 from people.models import Person
-from .models import WarriorType, Character, Party, Journey
+from .models import WarriorType, Character, JourneyTable
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, Fieldset,HTML
 from django.db.models import F
 
 class JourneyDestinationForm(forms.Form):
-    destination = forms.ModelChoiceField(queryset=Journey.objects.all())
+    destination = forms.ModelChoiceField(queryset=JourneyTable.objects.all())
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
@@ -17,6 +17,18 @@ class JourneyDestinationForm(forms.Form):
                 Submit('submit','Wybierz cel'),
             )
         )
+
+class EventForm(forms.Form):
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout()
+        self.helper.layout.append(
+            Column(
+                Submit('submit','Next Event'),
+            )
+        )
+
 
 class YesNoForm(forms.Form):
     BOOL_CHOICES = ((True, 'Yes'), (False, 'No'))

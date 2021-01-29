@@ -27,6 +27,7 @@ SECRET_KEY = '%fb9mq3q-_3c@#r3j5$s^dgl-m)8m=0a2c&fzas+jc=f6(uakp'
 DEBUG = True
 
 ALLOWED_HOSTS = [
+        '127.0.0.1',
         'warhammer.devel.b6a.pl',
         ]
 
@@ -41,7 +42,9 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'crispy_forms',
+    'channels',
 
+    'chat',
     'game',
     'people',
 ]
@@ -77,6 +80,15 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'settings.local.wsgi.application'
+ASGI_APPLICATION = 'settings.local.asgi.application'
+CHANNEL_LAYERS = {
+    'default': {
+        'BACKEND': 'channels_redis.core.RedisChannelLayer',
+        'CONFIG': {
+            "hosts": [('127.0.0.1', 6379)],
+        },
+    },
+}
 
 
 # Database
@@ -136,7 +148,6 @@ ADMINS = [('Tomasz', 'tomasz@brzezina.pl'),]
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 LOGIN_REDIRECT_URL = '/'
-
 try:
     from .local.settings import *
 except ImportError as e:

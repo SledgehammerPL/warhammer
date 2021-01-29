@@ -1,0 +1,16 @@
+{% extends 'game/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block head %}
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+<div class="row justify-content-center">
+  <div class="col-12">
+    <h1 class="mt-2">{{ event.event.title }}</h1>
+    <p>{{ event.description|linebreaksbr }}</p>
+     {% crispy form %}
+  </div>
+</div>
+{% endblock %}

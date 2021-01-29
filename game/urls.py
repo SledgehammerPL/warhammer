@@ -13,5 +13,6 @@ urlpatterns = [
   path('choose_leader/',views.choose_leader, name='choose_leader'),
   path('create_character/',views.create_character, name='create_character'),
   path('trip_to/',views.trip_to, name='trip_to'),
+  path('show_event/',views.show_event, name='show_event'),
   path('accounts/',include('django.contrib.auth.urls')),
 ]

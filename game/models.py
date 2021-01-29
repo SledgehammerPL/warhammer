@@ -1,4 +1,13 @@
 from django.db import models
+from django.db.models.signals import post_save
+from asgiref.sync import async_to_sync
+from channels.layers import get_channel_layer
+
+
+import logging
+logger = logging.getLogger('error_logger')
+
+channel_layer = get_channel_layer()
 
 # Create your models here.
 class Race(models.Model):
@@ -55,16 +64,6 @@ class Skill(models.Model):
     def __str__(self):
         return "{}".format(self.name)
 
-class Party(models.Model):
-    leader = models.ForeignKey('Character', on_delete=models.RESTRICT, related_name='+')
-    
-    class Meta:
-        verbose_name = "party"
-        verbose_name_plural = "parties"
-
-    def __str__(self):
-        return "{}'s party".format(self.leader)
-
 class Character(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     player = models.ForeignKey('people.Person', on_delete = models.RESTRICT)
@@ -105,7 +104,7 @@ class CharacterParameter(models.Model):
     value = models.IntegerField()
     description = models.CharField(max_length=256) 
  
-class Journey(models.Model):
+class JourneyTable(models.Model):
     destination = models.CharField(max_length=20)
     weeks = models.PositiveIntegerField()
     rolls = models.PositiveIntegerField()
@@ -117,7 +116,7 @@ class EventType(models.Model):
     def __str__(self):
         return self.name
 
-class Event(models.Model):
+class EventTable(models.Model):
     number = models.PositiveIntegerField()
     event_type = models.ForeignKey(EventType, on_delete = models.RESTRICT)
     title = models.CharField(max_length=100)
@@ -125,4 +124,18 @@ class Event(models.Model):
 
     def __str__(self):
         return ("{}: {} {}".format(self.event_type.name, self.number, self.title))
+
+class Event(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    character = models.ForeignKey(Character, on_delete = models.CASCADE)
+    event = models.ForeignKey(EventTable, on_delete = models.CASCADE)
+    description = models.TextField(blank=True)
+    done = models.BooleanField(default =False)
+
+def create_event_trigger(sender, instance, *args, **kwargs):
+    logger.error('event of {}'.format(instance.character))
+    if Event.objects.filter(character=instance.character,done=False).count() == 1:
+        async_to_sync(channel_layer.group_send)("chat_{}".format(instance.character.leader.name),  {"type": "redirect", "redirect": "/show_event/"})
+
+post_save.connect(create_event_trigger, sender=Event)
 

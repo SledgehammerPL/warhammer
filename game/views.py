@@ -2,9 +2,14 @@ from django.shortcuts import render, redirect
 from django.core.exceptions import ObjectDoesNotExist
 from .forms import * 
 from .models import * 
-from random import randint
+from random import randint, randrange
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
+from django.contrib import messages
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
+from django.template import Template, Context
+
 import logging
 logger = logging.getLogger('error_logger')
 
@@ -47,7 +52,9 @@ def create_character(request):
                     request.session['character_id']=warrior.id
                     request.session['character_name']=warrior.name
                     request.session['leader']=True
+                    request.session['leader_name']=warrior.name
                     form = NewCharacterForm()
+                    messages.success(request, 'New Character created.')
                 except IndexError:
                     pass
     else:
@@ -64,6 +71,34 @@ def character_list(request):
         'characters' : characters,
     }
     return render (request,'game/character_list.html', context)
+
+@login_required
+def show_event(request):
+    try:
+        you = Character.objects.get(pk=request.session['character_id'])
+        event = Event.objects.filter(character=you, done =False).order_by('created').first()
+        if event is None:
+            messages.success(request, 'End of events.')
+            return redirect('/')
+        if request.method == 'POST':
+            form = EventForm(request.POST)
+
+            if form.is_valid():
+                event.done = True
+                event.save()
+                return redirect('/show_event/')
+        else:
+            form = EventForm()
+
+        context = {
+            'event' : event,
+            'form' : form,
+        }
+        return render (request,'game/event.html', context)
+    except ObjectDoesNotExist:
+        return redirect('/characters/')
+
+
 
 @login_required
 def character_profile(request, character):
@@ -94,35 +129,6 @@ def character_profile(request, character):
         return redirect('/characters/')
 
 @login_required
-def create_party(request):
-    try:
-        character = Character.objects.get(pk=request.session['character_id'])
-
-        if request.method == 'POST':
-            form = NewPartyForm(request.POST)
-            if form.is_valid():
-                try:
-                    party = Party.objects.create(leader=character )
-                    members = form.cleaned_data['party_members']
-                    for party_member in members:
-                        party_member.party = party
-                        party_member.save()
-                    form = NewPartyForm()
-                except ObjectDoesNotExist:
-                    pass
-                return redirect('/')
-        else:
-            form = NewPartyForm()
-        context = {
-                'form': form
-                }
-
-        return render (request,'game/simple_form.html', context)
-    except ObjectDoesNotExist:
-        return redirect('/x')
-
-
-@login_required
 def choose_character(request):
     if request.method == 'POST':
         try:
@@ -134,6 +140,9 @@ def choose_character(request):
             request.session['character_id']=form.cleaned_data['character'].id
             request.session['character_name']=form.cleaned_data['character'].name
             request.session['leader']=form.cleaned_data['character'] == form.cleaned_data['character'].leader
+            request.session['leader_name']=form.cleaned_data['character'].leader.name
+            messages.success(request, 'Character successfully choosen.')
+            return redirect('/')
 
     else:
         form = ChooseCharacterForm(user=request.user)
@@ -155,6 +164,8 @@ def choose_leader(request):
                 you.leader = form.cleaned_data['leader']
                 you.save()
                 request.session['leader']=you == you.leader
+                request.session['leader_name']= you.leader.name
+                messages.success(request, 'Leader successfully choosen.')
                 return redirect('/')
         else:
             form = PartyLeaderForm()
@@ -179,6 +190,9 @@ def make_own_party(request):
                         character.leader=character
                         character.save()
                         request.session['leader']=True
+                        request.session['leader_name']=character.name
+                    messages.success(request, 'You are the leader of own party')
+
                 return redirect('/')
         else:
             form = YesNoForm(question="Are you sure you want to leave the  {}'s party?".format(you.leader))
@@ -192,8 +206,30 @@ def make_own_party(request):
 
 @login_required
 def trip_to(request):
-    form = JourneyDestinationForm()
+    if request.method == 'POST':
+        form = JourneyDestinationForm(request.POST)
+        if form.is_valid():
+            you = Character.objects.get(pk=request.session['character_id'])
+            channel_layer = get_channel_layer()
+            trip_to = form.cleaned_data['destination']
+            for roll in range(1,trip_to.rolls +1):
+                event = EventTable.objects.get(number="{}{}".format(randint(1,6),randint(1,6)),event_type__name='Hazards')
+#                event = EventTable.objects.get(number="{}{}".format(2,6),event_type__name='Hazards')
+
+                description_context = {
+                    'party_1D6' : randint(1,6)
+                }
+                for character in Character.objects.filter(leader=you.leader):
+                    description_context['warrior_1D6'] = randint(1,6)
+                    description_context['warrior'] = Character.objects.filter(leader=you.leader)[randrange(0,Character.objects.filter(leader=you.leader).count())]
+                    description = Template(event.description).render(Context(description_context))
+                    Event.objects.create(character = character, event = event, description = description)
+                    messages.info(request, 'added event {} to {}'.format(event.title, character))
+
+    else:
+        form = JourneyDestinationForm()
     context = {
         'form' : form,
     }
     return render (request,'game/simple_form.html', context)
+
