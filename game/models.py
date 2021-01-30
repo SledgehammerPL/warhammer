@@ -2,7 +2,7 @@ from django.db import models
 from django.db.models.signals import post_save
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
-
+from django.db.models import Sum
 
 import logging
 logger = logging.getLogger('error_logger')
@@ -72,6 +72,17 @@ class Character(models.Model):
     battle_level = models.PositiveIntegerField(default=1)
     starting_wounds = models.PositiveIntegerField()
     leader = models.ForeignKey("self", on_delete=models.RESTRICT, related_name ='leader_set', null = True)
+
+    def get_current_gold(self):
+        return Gold.objects.filter(owner=self).aggregate(suma=Sum('amount'))['suma']
+
+    def add_gold(self,amount, why):
+        Gold.objects.create(owner = self, amount = amount, description = why) if amount>0 else None
+
+    def remove_gold(self,amount, why):
+        amount = amount if amount < self.get_current_gold() else self.get_current_gold()
+        Gold.objects.create(owner = self, amount = -amount, description = why) if amount>0 else None
+
     def __str__(self):
         return "{}".format(self.name)
 
@@ -128,7 +139,8 @@ class EventTable(models.Model):
     event_type = models.ForeignKey(EventType, on_delete = models.RESTRICT)
     title = models.CharField(max_length=100)
     description = models.TextField(blank=True)
-    table = models.TextField()
+    description_copy = models.TextField(blank=True)
+    command = models.TextField(blank=True)
     whom = models.CharField(max_length=4,choices = Whom.choices, default = Whom.ONE)
 
     def __str__(self):
@@ -140,6 +152,7 @@ class Event(models.Model):
     event = models.ForeignKey(EventTable, on_delete = models.CASCADE)
     description = models.TextField(blank=True)
     done = models.BooleanField(default =False)
+    command = models.TextField(blank=True)
 
 def create_event_trigger(sender, instance, *args, **kwargs):
     logger.error('event of {}'.format(instance.character))
