@@ -3,7 +3,7 @@ from .models import *
 
 # Register your models here.
 
-class EventTableAdmin(admin.ModelAdmin):
+class EventTemplateAdmin(admin.ModelAdmin):
     readonly_fields = ['description_copy']
 
 admin.site.register(WarriorType)
@@ -18,5 +18,5 @@ admin.site.register(Equipment)
 admin.site.register(CharacterParameter)
 admin.site.register(JourneyTable)
 admin.site.register(EventType)
-admin.site.register(EventTable,EventTableAdmin)
+admin.site.register(EventTemplate,EventTemplateAdmin)
 

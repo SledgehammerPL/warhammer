@@ -2,14 +2,14 @@ from django.shortcuts import render, redirect
 from django.core.exceptions import ObjectDoesNotExist
 from .forms import * 
 from .models import * 
-from random import randint, randrange
+from random import randint
 from django.contrib.auth.decorators import login_required
 from django.db.models import Sum
 from django.contrib import messages
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.template import Template, Context
-import json
+from .functions import add_event
 
 import logging
 logger = logging.getLogger('error_logger')
@@ -138,6 +138,9 @@ def choose_character(request):
              form = ChooseCharacterForm(request.POST, user=request.user)
 
         if form.is_valid():
+            user = request.user
+            user.selected_character=form.cleaned_data['character']
+            user.save()
             request.session['character_id']=form.cleaned_data['character'].id
             request.session['character_name']=form.cleaned_data['character'].name
             request.session['leader']=form.cleaned_data['character'] == form.cleaned_data['character'].leader
@@ -214,86 +217,11 @@ def trip_to(request):
             channel_layer = get_channel_layer()
             trip_to = form.cleaned_data['destination']
             for roll in range(1,trip_to.rolls +1):
-#                event = EventTable.objects.get(number="{}{}".format(randint(1,6),randint(1,6)),event_type__name='Hazards')
-                event = EventTable.objects.get(number="{}{}".format(1,2),event_type__name='Hazards')
-                selected_warrior =  Character.objects.filter(leader=you.leader)[randrange(0,Character.objects.filter(leader=you.leader).count())]
-                party_1D6 = randint(1,6)
-                party_context = {
-                    'selected_warrior' : selected_warrior, 
-                    'party_print' : '',
-                    'party_command' : '',
-                    'each_warrior_print' : '',
-                    'each_warrior_command' : '',
-                    'selected_warrior_print' : '',
-                    'selected_warrior_command' : '',
-                    'not_selected_warrior_print' : '',
-                    'not_selected_warrior_command' : '',
+                event_roll = "{}{}".format(randint(1,6),randint(1,6))
+                event_roll = "13" #TB: Devel line
+                event = EventTemplate.objects.get(number=event_roll,event_type__name='Hazards')
 
-                }
-                party_commands = []
-                tasks = json.loads(event.command)
-                try: # wydruk i polecenia dla wszystkich bez losowania np. kazdy traci 20szt złota
-                    party_context['party_print']=tasks["0"]["party_print"]
-                    party_context['party_command']+=tasks["0"]["party_command"]
-                    party_commands += tasks["0"]["party_command"].split(";")
-                except KeyError:
-                    pass
-                try: #wydruk i polecenia po losowaniu - dla wszystkich - jesli wypadnie 1 to kazdy traci 20szt złota. 
-                    party_context['party_print']+=tasks[str(party_1D6)]["party_print"]
-                    party_context['party_command']+=tasks[str(party_1D6)]["party_command"]
-                    party_commands += tasks[str(party_1D6)]["party_command"]
-                except KeyError:
-                    pass
-
-                for character in Character.objects.filter(leader=you.leader):
-                    commands = party_commands[:]
-                    description_context=party_context.copy()
-                    character_1D6 = randint(1,6)
-                    try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
-                        description_context['each_warrior_print']=tasks["0"]["each_warrior_print"]
-                        description_context['each_warrior_command']+=tasks["0"]["each_warrior_command"]
-                        commands +=tasks["0"]["each_warrior_command"].split(";")
-                    except KeyError:
-                        pass
-                    try: # polecenia dla każdego po losowaniu wstępnym
-                        description_context['each_warrior_print']+=tasks[str(character_1D6)]["each_warrior_print"]
-                        description_context['each_warrior_command']+=tasks[str(character_1D6)]["each_warrior_command"]
-                        commands +=tasks[str(character_1D6)]["each_warrior_command"].split(";")
-                    except KeyError:
-                        pass
-                    if character == selected_warrior:
-                        selected_character_1D6 = randint(1,6)
-                        try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
-                            description_context['selected_warrior_print']+=tasks["0"]["selected_warrior_print"]
-                            description_context['selected_warrior_command']+=tasks["0"]["selected_warrior_command"]
-                            commands +=tasks["0"]["selected_warrior_command"].split(";")
-                        except KeyError:
-                            pass
-                        try: # polecenia dla każdego po losowaniu wstępnym
-                            description_context['selected_warrior_print']+=tasks[str(selected_character_1D6)]["selected_warrior_print"]
-                            description_context['selected_warrior_command']+=tasks[str(selected_character_1D6)]["selected_warrior_command"]
-                            commands +=tasks[str(selected_character_1D6)]["selected_warrior_command"].split(";")
-                        except KeyError:
-                            pass
-                    else:
-                        not_selected_character_1D6 = randint(1,6)
-                        try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
-                            description_context['not_selected_warrior_print']+=tasks["0"]["not_selected_warrior_print"]
-                            description_context['not_selected_warrior_command']+=tasks["0"]["not_selected_warrior_command"]
-                            commands +=tasks["0"]["not_selected_warrior_command"].split(";")
-                        except KeyError:
-                            pass
-                        try: # polecenia dla każdego po losowaniu wstępnym
-                            description_context['not_selected_warrior_print']+=tasks[str(not_selected_character_1D6)]["not_selected_warrior_print"]
-                            description_context['not_selected_warrior_command']+=tasks[str(not_selected_character_1D6)]["not_selected_warrior_command"]
-
-                            commands +=tasks[str(not_selected_character_1D6)]["not_selected_warrior_command"].split(";")
-                        except KeyError:
-                            pass
-                    description = Template("{} {}".format(event.description, "<i><br>party command: {{ party_command}}<br>each warrior command: {{ each_warrior_command }}<br>selected warrior command:{{ selected_warrior_command }}<br> not selected warior command: {{ not_selected_warrior_command }}</i>")).render(Context(description_context))
-
-                    Event.objects.create(character = character, event = event, description = description, command = json.dumps(commands))
-                    messages.info(request, 'added event {} to {}'.format(event.title, character))
+                add_event(event, you.leader)
 
     else:
         form = JourneyDestinationForm()

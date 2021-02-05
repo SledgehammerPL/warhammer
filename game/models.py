@@ -127,7 +127,7 @@ class EventType(models.Model):
     def __str__(self):
         return self.name
 
-class EventTable(models.Model):
+class EventTemplate(models.Model):
     class Whom(models.TextChoices):
         ALL = 'ALL'
         ANY = 'ANY'
@@ -149,10 +149,11 @@ class EventTable(models.Model):
 class Event(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     character = models.ForeignKey(Character, on_delete = models.CASCADE)
-    event = models.ForeignKey(EventTable, on_delete = models.CASCADE)
+    event_template = models.ForeignKey(EventTemplate, on_delete = models.CASCADE)
     description = models.TextField(blank=True)
     done = models.BooleanField(default =False)
     command = models.TextField(blank=True)
+    leader_event = models.ForeignKey("self", on_delete = models.CASCADE, null = True)
 
 def create_event_trigger(sender, instance, *args, **kwargs):
     logger.error('event of {}'.format(instance.character))

@@ -7,6 +7,7 @@ class Person(AbstractUser):
     created = models.DateTimeField(auto_now_add=True)
     password = models.CharField(_('password'), max_length=128, blank=True, null=True)
     email = models.EmailField(unique=True,)
+    selected_character = models.ForeignKey('game.Character',on_delete=models.CASCADE, null=True)
 
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = []
