@@ -17,6 +17,12 @@ logger = logging.getLogger('error_logger')
 # Create your views here.
 @login_required
 def index(request):
+    user = request.user
+    if 'character_id' not in request.session.keys():
+        request.session['character_id']=user.selected_character.id
+        request.session['character_name']=user.selected_character.name
+        request.session['leader']=user.selected_character == user.selected_character.leader
+        request.session['leader_name']=user.selected_character.leader.name
     context = {
     }
     return render (request,'game/index.html', context)
@@ -81,15 +87,19 @@ def show_event(request):
         if event is None:
             messages.success(request, 'End of events.')
             return redirect('/')
+        try:
+            commands = json.loads(event.event.command)
+        except AttributeError:
+            commands = {}
         if request.method == 'POST':
-            form = EventForm(request.POST)
+            form = EventForm(request.POST,options=commands['conditional'])
 
             if form.is_valid():
                 event.done = True
                 event.save()
                 return redirect('/show_event/')
         else:
-            form = EventForm()
+            form = EventForm(commands=commands)
 
         context = {
             'event' : event,

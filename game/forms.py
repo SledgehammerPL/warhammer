@@ -4,6 +4,10 @@ from .models import WarriorType, Character, JourneyTable
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, Fieldset,HTML
 from django.db.models import F
+import json
+import logging
+logger = logging.getLogger('error_logger')
+
 
 class JourneyDestinationForm(forms.Form):
     destination = forms.ModelChoiceField(queryset=JourneyTable.objects.all())
@@ -19,7 +23,13 @@ class JourneyDestinationForm(forms.Form):
         )
 
 class EventForm(forms.Form):
+    commands = {}
     def __init__(self, *args, **kwargs):
+        try:
+            self.commands = kwargs.pop('commands')
+            logger.error("EventForm.commands: {}".format(self.commands))
+        except KeyError:
+            pass
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout()
