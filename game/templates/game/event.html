@@ -10,7 +10,7 @@
   <div class="col-12">
     <h1 class="mt-2">{{ event.event.title }}</h1>
     {% autoescape off %}
-    <p>{{ event.description|linebreaksbr }}</p>
+    <p>{{ event.before_form|linebreaksbr }}</p>
     {% endautoescape %}
      {% crispy form %}
   </div>

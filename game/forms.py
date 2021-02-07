@@ -29,6 +29,7 @@ class EventForm(forms.Form):
     def __init__(self, *args, **kwargs):
         try:
             self.commands = kwargs.pop('commands')
+            after_form = kwargs.pop('after_form')
             logger.error("EventForm.commands: {}".format(self.commands))
         except KeyError:
             pass
@@ -41,9 +42,8 @@ class EventForm(forms.Form):
                     self.fields["choice_{}_{}".format(question.lower().replace(' ','_'),i)] = forms.BooleanField(label=question_spec["description"], required=False)
                     self.helper.layout.append('choice_{}_{}'.format(question.lower().replace(' ','_'),i))
 #            self.helper.layout.append(Submit("btn_"+question,question))
-        self.helper.layout.append(
-                Submit('submit','Next Event'),
-        )
+        self.helper.layout.append(HTML("<p>{}</p>".format(after_form)))
+        self.helper.layout.append(Submit('submit','Next Event'))
         self.helper.all().wrap_together(Column)
 
 

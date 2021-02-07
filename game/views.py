@@ -92,7 +92,7 @@ def show_event(request):
         except AttributeError:
             commands = {}
         if request.method == 'POST':
-            form = EventForm(request.POST,commands=commands)
+            form = EventForm(request.POST,commands=commands, after_form=event.after_form)
 
             if form.is_valid():
                 for q, v in form.data.items():
@@ -103,7 +103,7 @@ def show_event(request):
                 event.save()
                 return redirect('/show_event/')
         else:
-            form = EventForm(commands=commands)
+            form = EventForm(commands=commands, after_form=event.after_form)
 
         context = {
             'event' : event,
