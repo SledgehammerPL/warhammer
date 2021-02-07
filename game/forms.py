@@ -2,8 +2,9 @@ from django import forms
 from people.models import Person
 from .models import WarriorType, Character, JourneyTable
 from crispy_forms.helper import FormHelper
-from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, Fieldset,HTML
+from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, Fieldset,HTML,Button, ButtonHolder
 from django.db.models import F
+from django.utils.text import slugify
 import json
 import logging
 logger = logging.getLogger('error_logger')
@@ -24,6 +25,7 @@ class JourneyDestinationForm(forms.Form):
 
 class EventForm(forms.Form):
     commands = {}
+
     def __init__(self, *args, **kwargs):
         try:
             self.commands = kwargs.pop('commands')
@@ -33,11 +35,16 @@ class EventForm(forms.Form):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout()
+        for question, question_spec in self.commands['conditional'].items():
+            if "limit" in question_spec:
+                for i in range(int(question_spec["limit"])):
+                    self.fields["choice_{}_{}".format(question.lower().replace(' ','_'),i)] = forms.BooleanField(label=question_spec["description"], required=False)
+                    self.helper.layout.append('choice_{}_{}'.format(question.lower().replace(' ','_'),i))
+#            self.helper.layout.append(Submit("btn_"+question,question))
         self.helper.layout.append(
-            Column(
                 Submit('submit','Next Event'),
-            )
         )
+        self.helper.all().wrap_together(Column)
 
 
 class YesNoForm(forms.Form):

@@ -88,13 +88,17 @@ def show_event(request):
             messages.success(request, 'End of events.')
             return redirect('/')
         try:
-            commands = json.loads(event.event.command)
+            commands = json.loads(event.command)
         except AttributeError:
             commands = {}
         if request.method == 'POST':
-            form = EventForm(request.POST,options=commands['conditional'])
+            form = EventForm(request.POST,commands=commands)
 
             if form.is_valid():
+                for q, v in form.data.items():
+                    if q.startswith('btn_'):
+                        messages.success(request, commands['conditional'][v]['choice_print'])
+
                 event.done = True
                 event.save()
                 return redirect('/show_event/')
@@ -228,7 +232,7 @@ def trip_to(request):
             trip_to = form.cleaned_data['destination']
             for roll in range(1,trip_to.rolls +1):
                 event_roll = "{}{}".format(randint(1,6),randint(1,6))
-                event_roll = "13" #TB: Devel line
+                event_roll = "16" #TB: Devel line
                 event = EventTemplate.objects.get(number=event_roll,event_type__name='Hazards')
 
                 add_event(event, you.leader)

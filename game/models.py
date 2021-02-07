@@ -94,10 +94,11 @@ class Gold(models.Model):
     description = models.TextField() #tu pisać skąd lub na co
 
 class Item(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    code = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
     description = models.TextField() 
     def __str__(self):
-        return "{}".format(self.name)
+        return "{} ({})".format(self.name, self.code)
 
 class Equipment(models.Model):
     created = models.DateTimeField(auto_now_add=True)
@@ -138,7 +139,8 @@ class EventTemplate(models.Model):
     number = models.PositiveIntegerField()
     event_type = models.ForeignKey(EventType, on_delete = models.RESTRICT)
     title = models.CharField(max_length=100)
-    description = models.TextField(blank=True)
+    before_form = models.TextField(blank=True)
+    after_form = models.TextField(blank=True)
     description_copy = models.TextField(blank=True)
     command = models.TextField(blank=True)
     whom = models.CharField(max_length=4,choices = Whom.choices, default = Whom.ONE)
@@ -150,7 +152,8 @@ class Event(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     character = models.ForeignKey(Character, on_delete = models.CASCADE)
     event_template = models.ForeignKey(EventTemplate, on_delete = models.CASCADE)
-    description = models.TextField(blank=True)
+    before_form = models.TextField(blank=True)
+    after_form = models.TextField(blank=True)
     done = models.BooleanField(default =False)
     command = models.TextField(blank=True)
     leader_event = models.ForeignKey("self", on_delete = models.CASCADE, null = True)
