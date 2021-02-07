@@ -24,19 +24,26 @@ class JourneyDestinationForm(forms.Form):
         )
 
 class EventForm(forms.Form):
-    commands = {}
-
     def __init__(self, *args, **kwargs):
         try:
-            self.commands = kwargs.pop('commands')
+            commands = kwargs.pop('commands')
             after_form = kwargs.pop('after_form')
-            logger.error("EventForm.commands: {}".format(self.commands))
         except KeyError:
-            pass
+            commands = {}
+            after_form =""
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
         self.helper.layout = Layout()
-        for question, question_spec in self.commands['conditional'].items():
+        choices =[]
+        if "alternative" in commands:
+            if 'party_option' in commands['alternative']:
+                for option, option_spec in commands['alternative']['party_option'].items():
+                    logger.error("{}:{}".format(option, option_spec))
+                    choices.append(tuple((option,option_spec["description"])))
+                logger.error("{}".format(choices))
+                self.fields["option"] = forms.ChoiceField(label="",choices=choices,widget=forms.RadioSelect)
+                self.helper.layout.append('option')
+        for question, question_spec in commands['conditional'].items():
             if "limit" in question_spec:
                 for i in range(int(question_spec["limit"])):
                     self.fields["choice_{}_{}".format(question.lower().replace(' ','_'),i)] = forms.BooleanField(label=question_spec["description"], required=False)

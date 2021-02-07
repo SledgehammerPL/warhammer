@@ -129,13 +129,6 @@ class EventType(models.Model):
         return self.name
 
 class EventTemplate(models.Model):
-    class Whom(models.TextChoices):
-        ALL = 'ALL'
-        ANY = 'ANY'
-        SOME = 'SOME'
-        ONE = 'ONE'
-        EACH = 'EACH'
-
     number = models.PositiveIntegerField()
     event_type = models.ForeignKey(EventType, on_delete = models.RESTRICT)
     title = models.CharField(max_length=100)
@@ -143,7 +136,6 @@ class EventTemplate(models.Model):
     after_form = models.TextField(blank=True)
     description_copy = models.TextField(blank=True)
     command = models.TextField(blank=True)
-    whom = models.CharField(max_length=4,choices = Whom.choices, default = Whom.ONE)
 
     def __str__(self):
         return ("{}: {} {}".format(self.event_type.name, self.number, self.title))

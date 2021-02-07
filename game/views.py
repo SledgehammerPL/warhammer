@@ -91,6 +91,8 @@ def show_event(request):
             commands = json.loads(event.command)
         except AttributeError:
             commands = {}
+
+        logger.error("commands: {}".format(commands))    
         if request.method == 'POST':
             form = EventForm(request.POST,commands=commands, after_form=event.after_form)
 
@@ -232,7 +234,7 @@ def trip_to(request):
             trip_to = form.cleaned_data['destination']
             for roll in range(1,trip_to.rolls +1):
                 event_roll = "{}{}".format(randint(1,6),randint(1,6))
-                event_roll = "16" #TB: Devel line
+                event_roll = "14" #TB: Devel line
                 event = EventTemplate.objects.get(number=event_roll,event_type__name='Hazards')
 
                 add_event(event, you.leader)
