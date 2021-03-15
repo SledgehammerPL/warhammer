@@ -17,12 +17,6 @@ logger = logging.getLogger('error_logger')
 # Create your views here.
 @login_required
 def index(request):
-    user = request.user
-    if 'character_id' not in request.session.keys():
-        request.session['character_id']=user.selected_character.id
-        request.session['character_name']=user.selected_character.name
-        request.session['leader']=user.selected_character == user.selected_character.leader
-        request.session['leader_name']=user.selected_character.leader.name
     context = {
     }
     return render (request,'game/index.html', context)
@@ -56,10 +50,12 @@ def create_character(request):
                     damage_dice = CharacterParameter.objects.create(value=template.damage_dice,parameter=Parameter.objects.get(short_name='DD'), character = warrior, description = 'initial value of damage dice')
                     skills = CharacterParameter.objects.create(value=template.skills,parameter=Parameter.objects.get(short_name='SK'), character = warrior, description = 'initial value of skills')
                     move = CharacterParameter.objects.create(value=template.move,parameter=Parameter.objects.get(short_name='M'), character = warrior, description = 'initial value of move')
-                    request.session['character_id']=warrior.id
-                    request.session['character_name']=warrior.name
-                    request.session['leader']=True
-                    request.session['leader_name']=warrior.name
+                    request.user.selected_character=warrior
+                    request.user.save()
+                    #request.session['character_id']=warrior.id
+                    #request.session['character_name']=warrior.name
+                    #request.session['leader']=True
+                    #request.session['leader_name']=warrior.name
                     form = NewCharacterForm()
                     messages.success(request, 'New Character created.')
                 except IndexError:
@@ -82,10 +78,12 @@ def character_list(request):
 @login_required
 def show_event(request):
     try:
-        you = Character.objects.get(pk=request.session['character_id'])
+        you = request.user.selected_character
         event = Event.objects.filter(character=you, done =False).order_by('created').first()
         if event is None:
             messages.success(request, 'End of events.')
+            you.location=you.location.next_location
+            you.save()
             return redirect('/')
         try:
             commands = json.loads(event.command)
@@ -157,10 +155,10 @@ def choose_character(request):
             user = request.user
             user.selected_character=form.cleaned_data['character']
             user.save()
-            request.session['character_id']=form.cleaned_data['character'].id
-            request.session['character_name']=form.cleaned_data['character'].name
-            request.session['leader']=form.cleaned_data['character'] == form.cleaned_data['character'].leader
-            request.session['leader_name']=form.cleaned_data['character'].leader.name
+#            request.session['character_id']=form.cleaned_data['character'].id
+#            request.session['character_name']=form.cleaned_data['character'].name
+#            request.session['leader']=form.cleaned_data['character'] == form.cleaned_data['character'].leader
+#            request.session['leader_name']=form.cleaned_data['character'].leader.name
             messages.success(request, 'Character successfully choosen.')
             return redirect('/')
 
@@ -176,7 +174,7 @@ def choose_character(request):
 @login_required
 def choose_leader(request):
     try: 
-        you = Character.objects.get(pk=request.session['character_id'])
+        you = request.user.selected_character#Character.objects.get(pk=request.session['character_id'])
         if request.method == 'POST':
             form = PartyLeaderForm(request.POST)
 
@@ -200,7 +198,7 @@ def choose_leader(request):
 @login_required
 def make_own_party(request):
     try: 
-        you = Character.objects.get(pk=request.session['character_id'])
+        you = request.user.selected_character#Character.objects.get(pk=request.session['character_id'])
         if request.method == 'POST':
             form = YesNoForm(request.POST, question="Are you sure you want to leave the {}'s party?".format(you.leader))
 
@@ -229,12 +227,14 @@ def trip_to(request):
     if request.method == 'POST':
         form = JourneyDestinationForm(request.POST)
         if form.is_valid():
-            you = Character.objects.get(pk=request.session['character_id'])
+            you = request.user.selected_character#Character.objects.get(pk=request.session['character_id'])
             channel_layer = get_channel_layer()
             trip_to = form.cleaned_data['destination']
+            you.location=Location.objects.get(code="InJourneyTo{}".format(trip_to.destination))
+            you.save()
             for roll in range(1,trip_to.rolls +1):
                 event_roll = "{}{}".format(randint(1,6),randint(1,6))
-                event_roll = "14" #TB: Devel line
+                event_roll = "16" #TB: Devel line
                 event = EventTemplate.objects.get(number=event_roll,event_type__name='Hazards')
 
                 add_event(event, you.leader)
@@ -245,4 +245,15 @@ def trip_to(request):
         'form' : form,
     }
     return render (request,'game/simple_form.html', context)
+
+def visit_shop(request, shop_id):
+    shop = Shop.objects.get(pk=shop_id) 
+    
+    possible_items = Item.objects.filter(available_in=shop).annotate(
+
+    context = {
+        'shop' : shop,
+        'possible_items' : possible_items,
+    }
+    return render (request,'game/visit_shop.html', context)
 

@@ -15,4 +15,5 @@ urlpatterns = [
   path('trip_to/',views.trip_to, name='trip_to'),
   path('show_event/',views.show_event, name='show_event'),
   path('accounts/',include('django.contrib.auth.urls')),
+  path('visit_shop/<int:shop_id>/',views.visit_shop, name='visit_shop'),
 ]
