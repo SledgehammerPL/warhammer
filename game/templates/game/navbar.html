@@ -21,15 +21,15 @@
             </div>
           </li>
           {% if user.selected_character.leader == user.selected_character %}
-          {% if not user.selected_character.location.in_settlement %}
+          {% if not user.selected_character.location.is_settlement %}
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Drużyna</a>
             <div class="dropdown-menu" aria-labelledby="dropdown04">
-              {% if user.selected_character.location.possible_journey %}<a class="dropdown-item" href="/trip_to/">Podróż do ...</a> {% endif %}
+              {% if user.selected_character.location.is_possible_to_journey_to_settlement %}<a class="dropdown-item" href="/trip_to/">Podróż do ...</a> {% endif %}
             </div>
           </li>
           {% endif %}
-              {% if user.selected_character.location.in_settlement %}
+              {% if user.selected_character.location.is_settlement %}
               <li class="nav-item dropdown">
                 <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Miejsca</a>
                 <div class="dropdown-menu" aria-labelledby="dropdown04">

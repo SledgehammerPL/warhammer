@@ -90,6 +90,7 @@ class Location(models.Model):
     weeks_of_journey_to = models.PositiveIntegerField(default=0)
     is_settlement = models.BooleanField(default=False)
     next_location = models.ForeignKey('self', on_delete = models.RESTRICT, null=True, blank=True)
+    no_of_dices = models.PositiveIntegerField(default=0)
     def __str__(self):
         return "{}".format(self.name)
 

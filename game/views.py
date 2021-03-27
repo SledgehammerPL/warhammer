@@ -4,7 +4,8 @@ from .forms import *
 from .models import * 
 from random import randint
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum
+from django.db.models import Sum, F, Q,  ExpressionWrapper, BooleanField
+from django.db.models.functions import Round
 from django.contrib import messages
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
@@ -247,13 +248,35 @@ def trip_to(request):
     return render (request,'game/simple_form.html', context)
 
 def visit_shop(request, shop_id):
+    from django.db.models.expressions import Func
+    from django.db.models.functions.mixins import (
+        FixDecimalInputMixin, NumericOutputFieldMixin,
+    )
+    class Random(NumericOutputFieldMixin, Func):
+       function = 'RANDOM'
+       arity = 0
+
+       def as_mysql(self, compiler, connection, **extra_context):
+           return super().as_sql(compiler, connection, function='RAND', **extra_context)
+
+       def as_oracle(self, compiler, connection, **extra_context):
+           return super().as_sql(compiler, connection, function='DBMS_RANDOM.VALUE', **extra_context)
+
+       def as_sqlite(self, compiler, connection, **extra_context):
+           return super().as_sql(compiler, connection, function='RAND', **extra_context)
+
+       def get_group_by_cols(self, alias=None):
+           return []
+
     shop = Shop.objects.get(pk=shop_id) 
-    
-    possible_items = Item.objects.filter(available_in=shop).annotate(
+
+    #possible_items = Item.objects.filter(available_in=shop).annotate(available=Random(sum(randint(1,6) for i in range(request.user.selected_character.location.no_of_dices))))
+    possible_items = Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField()))
 
     context = {
         'shop' : shop,
         'possible_items' : possible_items,
+        'user' : request.user,
     }
     return render (request,'game/visit_shop.html', context)
 
