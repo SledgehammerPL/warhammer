@@ -1,0 +1,57 @@
+{% extends 'game/base.html' %}
+{% load crispy_forms_tags %}
+
+{% block head %}
+<script>
+var xhttp = new XMLHttpRequest();
+function buy_item(item, price, shop) {
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      var data = JSON.parse(this.responseText);
+      document.getElementById('gold').innerHTML=data["gold"];
+    }
+  };
+  xhttp.open('POST', '/buy_item', true);
+  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+  xhttp.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+  xhttp.send("item="+item+"&price="+price+"&seller="+shop);
+}
+function sell_item(element, item, price, shop) {
+  xhttp.onreadystatechange = function() {
+    if (this.readyState == 4 && this.status == 200) {
+      alert(this.responseText);
+      var data = JSON.parse(this.responseText);
+      if (data["result"]==0) {
+        element.style.visibility='hidden';
+      }
+      document.getElementById('gold').innerHTML=data["gold"];
+    }
+  };
+  xhttp.open('POST', '/sell_item', true);
+  xhttp.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
+  xhttp.setRequestHeader("X-CSRFToken", "{{ csrf_token }}");
+  xhttp.send("item="+item+"&price="+price+"&buyer="+shop);
+}
+
+</script>
+{% endblock %}
+
+{% block content %}
+    <div class="container">
+<div class="row justify-content-center">
+  <div class="col-12">
+    <h1 class="mt-2">{{ shop.name }}</h1>
+    <table class="table table-hover">
+      <thead>
+        <tr><th scope="col">EQUIPMENT</th><th scope="col">COST<br>(BUY)</th><th scope="col">COST<br>(SELL)</th><th scope="col">DESCRIPTION<th></th></tr>
+      </thead>
+      <tbody>
+      {% for item in possible_items %}
+      <tr scope="row"><td>{{ item.name }}</td><td style="text-align:right">{{ item.buy_price }}</td><td style="text-align:right">{{ item.sell_price }}</td><td>{{ item.description }}. Only for: {{ item.restriction.all|join:", " }} <br><button id="btn{{forloop.counter}}" type="button" class="btn btn-info" onclick="this.style.visibility='hidden';{% if item.available %}document.getElementById('btnbuy{{forloop.counter}}').style.visibility='visible';{% else %}document.getElementById('notinstock{{forloop.counter}}').style.visibility='visible';{% endif %}">Check availibility</button>{% if item.to_sell %} <button id="btnsell{{forloop.counter}}" type="button" class="btn btn-warning" onclick="sell_item(this,'{{ item.code }}', {{ item.sell_price }},'{{ shop.name }}')">SELL</button>{% endif %} {% if item.available %}<button style="visibility:hidden" id="btnbuy{{forloop.counter}}" type="button" class="btn btn-success" onclick="buy_item('{{ item.code}}',{{ item.buy_price }},'{{ shop.name }}')">BUY</button>{% else %}<button style="visibility:hidden" id="notinstock{{forloop.counter}}" type="button" class="btn btn-danger" disabled>NOT IN STOCK</button>{% endif %}</td></tr>
+      {% endfor %}
+      </tbody>
+  </table>
+
+  </div>
+</div>
+{% endblock %}

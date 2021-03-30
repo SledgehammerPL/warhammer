@@ -34,16 +34,12 @@
 
     {% block content %}
     {% endblock %}
-    <footer>
-      <br>
-      <br>
-      <br>
-    </footer>
     <textarea id="chat-log" cols="40" rows="5"></textarea><br>
     <input id="chat-message-input" type="text" size="40"><br>
     <input id="chat-message-submit" type="button" value="Send">
 
     <script src="/static/js/websocket.js"></script>
+    {% include 'game/footer.html' %}
   </body>
 </html>
 

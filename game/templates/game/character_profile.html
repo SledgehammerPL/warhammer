@@ -36,10 +36,11 @@
     <div><label class="col-4 col-sm-3 col-md-2">Attacks:</label> {{ parameters.attacks.value }}</div>
     <div><label class="col-4 col-sm-3 col-md-2">Luck:</label> {{ parameters.luck.value }}</div>
     <div><label class="col-4 col-sm-3 col-md-2">Willpower:</label> {{ parameters.willpower.value }}</div>
-    <div><label class="col-4 col-sm-3 col-md-2">Equipment:</label>
+    <div><label class="col-4 col-sm-3 col-md-2">Equipment:</label><ul>
       {% for equipment in equipments %}
-      <div>{{ equipment }} </div>
+      <li>{{ equipment }} </li>
       {% endfor %}
+      </ul>
     </div>
     <div><label class="col-4 col-sm-3 col-md-2">Pinning:</label> {% if parameters.pinning.value > 0 %}Breaks on a roll of {{ parameters.pinning.value }}+{% else %}Automatic pinning{% endif %}</div>
 
