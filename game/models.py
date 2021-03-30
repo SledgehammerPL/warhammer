@@ -112,6 +112,25 @@ class Character(models.Model):
     def remove_gold(self,amount, why):
         amount = amount if amount < self.get_current_gold() else self.get_current_gold()
         Gold.objects.create(owner = self, amount = -amount, description = why) if amount>0 else None
+    def buy_item(self, code, price, seller):
+        if self.get_current_gold()>=price:
+            item= Item.objects.get(code=code)
+            Gold.objects.create(amount=-price, description="{} bought from {}".format(item, seller), owner=self)
+            Equipment.objects.create(item=item, owner=self, description="bought from {}".format(seller))
+            return True
+        else:
+            return False
+    def sell_item(self, code, price, buyer):
+        item= Item.objects.get(code=code)
+        to_sell=Equipment.objects.filter(item=item, owner=self)
+        if to_sell.count()>0: 
+            Gold.objects.create(amount=+price, description="{} sold to {}".format(item, buyer), owner=self)
+            to_sell[0].delete()
+            if to_sell.count()>0:
+                return True
+            return False
+        return False
+
 
     def __str__(self):
         return "{}".format(self.name)
@@ -130,7 +149,7 @@ class Equipment(models.Model):
     description = models.TextField() #tu pisać skąd lub na co
 
     def __str__(self):
-        return "{}".format(self.name)
+        return "{}".format(self.item.name)
 
 class CharacterParameter(models.Model):
     created = models.DateTimeField(auto_now_add=True)

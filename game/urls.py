@@ -1,4 +1,5 @@
 from django.urls import path, include
+
 from . import views
 
 urlpatterns = [
@@ -16,4 +17,6 @@ urlpatterns = [
   path('show_event/',views.show_event, name='show_event'),
   path('accounts/',include('django.contrib.auth.urls')),
   path('visit_shop/<int:shop_id>/',views.visit_shop, name='visit_shop'),
+  path('buy_item', views.buy_item, name='buy_item'),
+  path('sell_item', views.sell_item, name='sell_item'),
 ]

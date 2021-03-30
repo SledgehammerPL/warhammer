@@ -1,16 +1,18 @@
 from django.shortcuts import render, redirect
+from django.http import HttpResponse, JsonResponse
 from django.core.exceptions import ObjectDoesNotExist
 from .forms import * 
 from .models import * 
 from random import randint
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, F, Q,  ExpressionWrapper, BooleanField
+from django.db.models import Sum, F, Q,  ExpressionWrapper, BooleanField, Exists, OuterRef
 from django.db.models.functions import Round
 from django.contrib import messages
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.template import Template, Context
 from .functions import add_event
+from django.views.decorators.csrf import csrf_protect
 
 import logging
 logger = logging.getLogger('error_logger')
@@ -121,7 +123,7 @@ def character_profile(request, character):
     try:
         you = Character.objects.get(pk=character, player=request.user)
         other_party_members = Character.objects.filter(leader =you.leader).exclude(id=you.id)
-
+        equipments = Equipment.objects.filter(owner = you)
         parameters = {
                 'wounds' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'W').aggregate(value=Sum('value')),
                 'move' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'M').aggregate(value=Sum('value')),
@@ -139,6 +141,7 @@ def character_profile(request, character):
            'character' : you,
            'parameters' : parameters,
            'other_party_members' : other_party_members,
+           'equipments' : equipments,
         }
         return render (request,'game/character_profile.html', context)
     except ObjectDoesNotExist:
@@ -269,14 +272,44 @@ def visit_shop(request, shop_id):
            return []
 
     shop = Shop.objects.get(pk=shop_id) 
-
+    you = request.user.selected_character
     #possible_items = Item.objects.filter(available_in=shop).annotate(available=Random(sum(randint(1,6) for i in range(request.user.selected_character.location.no_of_dices))))
-    possible_items = Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField()))
-
+    my_equipments = Equipment.objects.filter(item=OuterRef('pk'), owner=you)
+    possible_items = Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
     context = {
         'shop' : shop,
         'possible_items' : possible_items,
         'user' : request.user,
     }
     return render (request,'game/visit_shop.html', context)
+####################################################
 
+@csrf_protect
+def buy_item(request):
+    code = request.POST.get("item")
+    price = int(request.POST.get("price"))
+    seller = request.POST.get("seller")
+    buyer = request.user.selected_character
+    if buyer.buy_item(code, price, seller):
+        result = "ok"
+    else:
+        result = "no way";
+    return JsonResponse({
+        'result' : result,
+        'gold' : buyer.get_current_gold(),
+        'price' : price,
+        'item' : Item.objects.get(code=code).name,
+    })
+@csrf_protect
+def sell_item(request):
+    code = request.POST.get("item")
+    price = int(request.POST.get("price"))
+    buyer = request.POST.get("buyer")
+    seller = request.user.selected_character
+    result = seller.sell_item(code, price, buyer)
+    return JsonResponse({
+        'result' : result,
+        'gold' : seller.get_current_gold(),
+        'price' : price,
+        'item' : Item.objects.get(code=code).name,
+    })
