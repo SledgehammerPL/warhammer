@@ -5,7 +5,6 @@ from . import views
 urlpatterns = [
   # Example:
   path('',views.index, name='index'),
-#  path('create_party2/',views.PartyCreateView.as_view(), name='create_party2'),
   path('choose_character/',views.choose_character, name='choose_character'),
   path('make_own_party/',views.make_own_party, name='make_own_party'),
   path('choose_leader/',views.choose_leader, name='choose_leader'),
@@ -17,6 +16,7 @@ urlpatterns = [
   path('show_event/',views.show_event, name='show_event'),
   path('accounts/',include('django.contrib.auth.urls')),
   path('visit_shop/<int:shop_id>/',views.visit_shop, name='visit_shop'),
+  path('visit_alehouse/',views.visit_alehouse, name='visit_alehouse'),
   path('buy_item', views.buy_item, name='buy_item'),
   path('sell_item', views.sell_item, name='sell_item'),
 ]

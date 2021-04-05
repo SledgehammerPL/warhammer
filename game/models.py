@@ -21,6 +21,7 @@ class WarriorType(models.Model):
     polish_name = models.CharField(max_length=100, unique=True)
     description = models.TextField() #tu pisać skąd lub na co
     race = models.ForeignKey(Race, on_delete=models.RESTRICT)
+    alehouse_roll = models.CharField(max_length=10, default='2D6')
     def __str__(self):
         return "{}".format(self.name)
 
@@ -56,9 +57,14 @@ class WarriorLevelTemplate(models.Model):
 
     def __str__(self):
         return "{} level {}".format(self.warrior_type.name, self.level)
-   
+
+class ShopType(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    availability = models.PositiveIntegerField(default=1)
+
 class Shop(models.Model):
     name = models.CharField(max_length=100, unique=True)
+    shop_type = models.ForeignKey(ShopType, on_delete=models.RESTRICT, null=True)
 
     def __str__(self):
         return "{}".format(self.name)
@@ -178,7 +184,7 @@ class EventTemplate(models.Model):
     before_form = models.TextField(blank=True)
     after_form = models.TextField(blank=True)
     description_copy = models.TextField(blank=True)
-    command = models.TextField(blank=True)
+    command = models.TextField(null=False, default="{}")
 
     def __str__(self):
         return ("{}: {} {}".format(self.event_type.name, self.number, self.title))
@@ -199,4 +205,12 @@ def create_event_trigger(sender, instance, *args, **kwargs):
         async_to_sync(channel_layer.group_send)("chat_{}".format(instance.character.leader.name),  {"type": "redirect", "redirect": "/show_event/"})
 
 post_save.connect(create_event_trigger, sender=Event)
+
+class ShopStatus(models.Model):
+    name = models.CharField(max_length=20)
+
+class Settlement_Activity(models.Model):
+    character =  models.ForeignKey(Character, on_delete = models.CASCADE)
+    shop = models.ForeignKey(Shop, on_delete = models.CASCADE)
+    status = models.ForeignKey(ShopStatus, on_delete = models.CASCADE)
 

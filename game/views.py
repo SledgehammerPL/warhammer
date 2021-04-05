@@ -11,7 +11,7 @@ from django.contrib import messages
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.template import Template, Context
-from .functions import add_event
+from .functions import add_party_event, add_warrior_event, roll
 from django.views.decorators.csrf import csrf_protect
 
 import logging
@@ -237,11 +237,11 @@ def trip_to(request):
             you.location=Location.objects.get(code="InJourneyTo{}".format(trip_to.destination))
             you.save()
             for roll in range(1,trip_to.rolls +1):
-                event_roll = "{}{}".format(randint(1,6),randint(1,6))
-                event_roll = "16" #TB: Devel line
+                event_roll = "{}{}".format(roll('2D6'))
+                #event_roll = "16" #TB: Devel line
                 event = EventTemplate.objects.get(number=event_roll,event_type__name='Hazards')
 
-                add_event(event, you.leader)
+                add_party_event(event, you.leader)
 
     else:
         form = JourneyDestinationForm()
@@ -273,7 +273,6 @@ def visit_shop(request, shop_id):
 
     shop = Shop.objects.get(pk=shop_id) 
     you = request.user.selected_character
-    #possible_items = Item.objects.filter(available_in=shop).annotate(available=Random(sum(randint(1,6) for i in range(request.user.selected_character.location.no_of_dices))))
     my_equipments = Equipment.objects.filter(item=OuterRef('pk'), owner=you)
     possible_items = Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
     context = {
@@ -282,6 +281,15 @@ def visit_shop(request, shop_id):
         'user' : request.user,
     }
     return render (request,'game/visit_shop.html', context)
+
+def visit_alehouse(request):
+    you = request.user.selected_character
+    event_roll=roll(you.warrior_type.alehouse_roll)
+    
+    event = EventTemplate.objects.get(number=event_roll,event_type__name='Alehouse')
+    add_warrior_event(event, you)
+    return redirect('/show_event/')
+
 ####################################################
 
 @csrf_protect
