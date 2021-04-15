@@ -82,12 +82,6 @@ class Item(models.Model):
     def __str__(self):
         return "{} ({})".format(self.name, self.code)
 
-class Skill(models.Model):
-    name = models.CharField(max_length=100, unique=True)
-    description = models.TextField() #tu pisać skąd lub na co
-    def __str__(self):
-        return "{}".format(self.name)
-
 class Location(models.Model):
     name = models.CharField(max_length=100)
     character_position = models.CharField(max_length=100, null=True)
@@ -163,7 +157,29 @@ class CharacterParameter(models.Model):
     parameter = models.ForeignKey(Parameter, on_delete = models.RESTRICT)
     value = models.IntegerField()
     description = models.CharField(max_length=256) 
- 
+
+class SkillType(models.Model):
+    code = models.CharField(max_length=10)
+    name = models.CharField(max_length=256)
+    description = models.TextField()
+    def __str__(self):
+        return "{}".format(self.name)
+
+class Skill(models.Model):
+    name = models.CharField(max_length=256)
+    skill_type = models.ForeignKey(SkillType, on_delete = models.RESTRICT)
+    description = models.TextField() #tu pisać skąd lub na co
+    restriction = models.ManyToManyField(WarriorType)
+
+    def __str__(self):
+        return "{}".format(self.name)
+
+class CharacterSkill(models.Model):
+    character = models.ForeignKey(Character, on_delete = models.RESTRICT)
+    skill = models.ForeignKey(Skill, on_delete = models.RESTRICT)
+    description = models.TextField() #tu pisać skąd lub na co
+
+
 class JourneyTable(models.Model):
     location = models.ForeignKey(Location, on_delete = models.RESTRICT, null=True)
     destination = models.CharField(max_length=20)
