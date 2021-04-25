@@ -14,7 +14,7 @@
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Postać</a>
               <div class="dropdown-menu" aria-labelledby="dropdown04">
-                {% if user.selected_character.location.id != 0 %}
+                {% if user.selected_character.location.template.id != 1 %}
                   <a class="dropdown-item" href="/choose_leader/">Dołącz do drużyny</a>
                   <a class="dropdown-item" href="/make_own_party/">Wystąp z drużyny</a>
                   {% if user.selected_character.location.template.is_settlement or user.selected_character.location.id == 1 %}
@@ -35,13 +35,10 @@
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Miejsca</a>
               <div class="dropdown-menu" aria-labelledby="dropdown04">
-                <a class="dropdown-item" href="/visit_alehouse/">Alehouse</a>
-                {% for shop in user.selected_character.location.shop.all %}
+                {% for sa in user.selected_character.settlementactivity_set.all %}
 
-                <a class="dropdown-item" href="/visit_shop/{{ shop.id }}/">{{ shop.name }}</a>
+                <a class="dropdown-item{% if sa.status.id == 0 %} disabled {% endif %}" href="/visit_shop/{{ sa.shop_at_location.id }}/">{{ sa.shop_at_location.shop.name }}</a>
                 {% endfor %}
-                <!-- a class="dropdown-item" href="/regulamin-wplat/">Regulamin wpłat</a>
-                  <a class="dropdown-item" href="/privacy/">Polityka prywatności</a -->
               </div>
             </li>
             {% else %}

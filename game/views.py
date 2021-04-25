@@ -85,33 +85,39 @@ def show_event(request):
    
     if event is None:
         messages.success(request, 'End of events.')
-        journey = you.location
-        if you.location.next_location:
-            messages.success(request, 'Jest Lokacja.')
-            you.location=you.location.next_location
-        else:
-            messages.success(request, 'Robimy nowe settlement.')
-            new_settlement = Location.objects.create(template=you.location.template.next_location.all()[0], name="settlement")
-            new_settlement.name = "{} {}".format(new_settlement.template.name,new_settlement.id)
-            available_shops = Shop.objects.all()
-            for shop in available_shops:
-                if roll("{}D6".format(new_settlement.template.no_of_dices))>=shop.shop_type.availability:
-                    new_settlement.shop.add(shop)
+        if you.location.template.is_journey: 
+            journey = you.location
+            if you.location.next_location:
+                messages.success(request, 'Dotarłeś.')
+                you.location=you.location.next_location
+            else:
+                messages.success(request, 'Robimy nowe settlement.')
+                new_settlement = Location.objects.create(template=you.location.template.next_location.all()[0], name="settlement")
+                new_settlement.name = "{} {}".format(new_settlement.template.name,new_settlement.id)
+                available_shops = Shop.objects.all()
+                # Tu dodajemy shopy!!!
+                for shop in available_shops:
+                    if roll("{}D6".format(new_settlement.template.no_of_dices))>=shop.shop_type.availability:
+                        new_settlement.shop.add(shop)
+                
+                new_settlement.save()
 
-            # Tu dodajemy shopy!!!
-            new_settlement.save()
-        
+                # A tu ustawiamy, ze sa jeszcze nie odwiedzone!!!
+                for real_shop in new_settlement.shopatlocation_set.all():
+                    SettlementActivity.objects.create(character=you, shop_at_location=real_shop, status=ShopStatus.objects.get(pk=1))
+                
+            
 
-            journey.next_location = new_settlement
-            journey.save()
+                journey.next_location = new_settlement
+                journey.save()
 
-            you.location=new_settlement
+                you.location=new_settlement
 
-        you.save()
-        
-        if not journey.character_set.all():
-            journey.delete()
-         
+            you.save()
+            
+            if not journey.character_set.all():
+                journey.delete()
+             
         return redirect('/')
 
     try:
@@ -285,7 +291,7 @@ def end_adventure(request):
 def wait_outside(request):
     you = request.user.selected_character
     prev_location = you.location
-    you.location = Location.objects.get(pk=1)
+    you.location = Location.objects.get(pk=2)
     you.save()
 
     if not prev_location.character_set.all():
@@ -333,7 +339,7 @@ def trip_to(request, target_id):
 
     return redirect('/')
 
-def visit_shop(request, shop_id):
+def visit_shop(request, shopatlocation_id):
     from django.db.models.expressions import Func
     from django.db.models.functions.mixins import (
         FixDecimalInputMixin, NumericOutputFieldMixin,
@@ -354,16 +360,44 @@ def visit_shop(request, shop_id):
        def get_group_by_cols(self, alias=None):
            return []
 
-    shop = Shop.objects.get(pk=shop_id) 
+    sal = ShopAtLocation.objects.get(pk=shopatlocation_id) 
+    activity = SettlementActivity.objects.get(shop_at_location=sal)
+    if activity.status.id==0:
+        messages.success(request, 'tu już byłeś - wypad')
+        return redirect('/')
+    
+    activity.status=ShopStatus.objects.get(pk=0)
+    activity.save()
+    if sal.shop.shop_type_id == 3:
+        return redirect('/visit_alehouse/')
+    if sal.shop.shop_type_id == 4:
+        return redirect('/visit_gambling_house/')
+    if sal.shop.shop_type_id == 5:
+        return redirect('/visit_temple/')
+
+
     you = request.user.selected_character
     my_equipments = Equipment.objects.filter(item=OuterRef('pk'), owner=you)
-    possible_items = Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.template.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
+    possible_items = Item.objects.filter(available_in=sal.shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.template.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
     context = {
-        'shop' : shop,
+        'shop' : sal.shop,
         'possible_items' : possible_items,
         'user' : request.user,
     }
     return render (request,'game/visit_shop.html', context)
+
+def visit_temple(request):
+    context = {
+        'form' : form,
+    }
+    return render (request,'game/simple_form.html', context)
+
+def visit_gambling_house(request):
+    context = {
+        'form' : form,
+    }
+    return render (request,'game/simple_form.html', context)
+
 
 def visit_alehouse(request):
     you = request.user.selected_character

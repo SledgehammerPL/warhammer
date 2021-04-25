@@ -147,7 +147,7 @@ def add_warrior_event(event_template, character):
     logger.error("commands: {}".format(event_template.command))
     try:
         tasks = json.loads(event_template.command)
-    except JSONDecodeError:
+    except json.JSONDecodeError:
         tasks={}
     warrior_event(character, event_template, tasks)
 
@@ -174,7 +174,7 @@ def add_party_event(event_template, leader):
     party_obligatory_commands = []
     try:
         tasks = json.loads(event_template.command)
-    except JSONDecodeError:
+    except json.JSONDecodeError:
         tasks={}
 
     try: # wydruk i polecenia dla wszystkich bez losowania np. kazdy traci 20szt złota

@@ -88,6 +88,7 @@ class LocationTemplate(models.Model):
     code = models.CharField(max_length=20, unique = True)
     weeks_of_journey_to = models.PositiveIntegerField(default=0)
     is_settlement = models.BooleanField(default=False)
+    is_journey = models.BooleanField(default=False)
     next_location = models.ManyToManyField('self')
     next_location_desc = models.CharField(max_length=100)
     next_location_url = models.CharField(max_length=100)
@@ -95,15 +96,18 @@ class LocationTemplate(models.Model):
 
     def __str__(self):
         return "{}".format(self.name)
-
 class Location(models.Model):
     name = models.CharField(max_length=100)
     template = models.ForeignKey(LocationTemplate, on_delete = models.RESTRICT, null=True, blank=True)
-    shop = models.ManyToManyField(Shop) 
+    shop = models.ManyToManyField(Shop,through="ShopAtLocation")
     next_location = models.ForeignKey('self', on_delete = models.RESTRICT, null=True, blank=True)
 
     def __str__(self):
         return "{}".format(self.name)
+
+class ShopAtLocation(models.Model):
+    location = models.ForeignKey(Location, on_delete =models.CASCADE)
+    shop = models.ForeignKey(Shop, on_delete =models.CASCADE)
 
 class Character(models.Model):
     created = models.DateTimeField(auto_now_add=True)
@@ -236,8 +240,8 @@ post_save.connect(create_event_trigger, sender=Event)
 class ShopStatus(models.Model):
     name = models.CharField(max_length=20)
 
-class Settlement_Activity(models.Model):
+class SettlementActivity(models.Model):
     character =  models.ForeignKey(Character, on_delete = models.CASCADE)
-    shop = models.ForeignKey(Shop, on_delete = models.CASCADE)
+    shop_at_location = models.ForeignKey(ShopAtLocation, on_delete = models.CASCADE)
     status = models.ForeignKey(ShopStatus, on_delete = models.CASCADE)
 
