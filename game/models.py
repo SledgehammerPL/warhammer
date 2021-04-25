@@ -81,16 +81,27 @@ class Item(models.Model):
     command = models.CharField(max_length=256, blank=True)
     def __str__(self):
         return "{} ({})".format(self.name, self.code)
-
-class Location(models.Model):
+  
+class LocationTemplate(models.Model):
     name = models.CharField(max_length=100)
     character_position = models.CharField(max_length=100, null=True)
     code = models.CharField(max_length=20, unique = True)
-    is_possible_to_journey_to_settlement = models.BooleanField(default=True)
     weeks_of_journey_to = models.PositiveIntegerField(default=0)
     is_settlement = models.BooleanField(default=False)
-    next_location = models.ForeignKey('self', on_delete = models.RESTRICT, null=True, blank=True)
+    next_location = models.ManyToManyField('self')
+    next_location_desc = models.CharField(max_length=100)
+    next_location_url = models.CharField(max_length=100)
     no_of_dices = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return "{}".format(self.name)
+
+class Location(models.Model):
+    name = models.CharField(max_length=100)
+    template = models.ForeignKey(LocationTemplate, on_delete = models.RESTRICT, null=True, blank=True)
+    shop = models.ManyToManyField(Shop) 
+    next_location = models.ForeignKey('self', on_delete = models.RESTRICT, null=True, blank=True)
+
     def __str__(self):
         return "{}".format(self.name)
 
@@ -102,7 +113,7 @@ class Character(models.Model):
     battle_level = models.PositiveIntegerField(default=1)
     starting_wounds = models.PositiveIntegerField()
     leader = models.ForeignKey("self", on_delete=models.RESTRICT, related_name ='leader_set', null = True)
-    location = models.ForeignKey(Location, on_delete=models.RESTRICT, default=1)
+    location = models.ForeignKey(Location, on_delete=models.RESTRICT, default=0)
     def get_current_gold(self):
         return Gold.objects.filter(owner=self).aggregate(suma=Sum('amount'))['suma']
 
@@ -181,7 +192,7 @@ class CharacterSkill(models.Model):
 
 
 class JourneyTable(models.Model):
-    location = models.ForeignKey(Location, on_delete = models.RESTRICT, null=True)
+    location = models.ForeignKey(LocationTemplate, on_delete = models.RESTRICT, null=True)
     destination = models.CharField(max_length=20)
     weeks = models.PositiveIntegerField()
     rolls = models.PositiveIntegerField()

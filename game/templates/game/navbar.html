@@ -10,70 +10,77 @@
         <ul class="navbar-nav mr-auto">
           <!-- li class="nav-item">
             <a class="nav-link" href="/about/">O nas</a>
-          </li -->
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Postać</a>
-            <div class="dropdown-menu" aria-labelledby="dropdown04">
-              <a class="dropdown-item" href="/choose_leader/">Dołącz do drużyny</a>
-              <a class="dropdown-item" href="/make_own_party/">Wystąp z drużyny</a>
-              <a class="dropdown-item" href="/show_event/">Wydarzenia</a>
-              <!--a class="dropdown-item" href="/privacy/">Polityka prywatności</a -->
-            </div>
-          </li>
-          {% if user.selected_character.leader == user.selected_character %}
-          {% if not user.selected_character.location.is_settlement %}
-          <li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Drużyna</a>
-            <div class="dropdown-menu" aria-labelledby="dropdown04">
-              {% if user.selected_character.location.is_possible_to_journey_to_settlement %}<a class="dropdown-item" href="/trip_to/">Podróż do ...</a> {% endif %}
-            </div>
-          </li>
-          {% endif %}
-              {% if user.selected_character.location.is_settlement %}
-              <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Miejsca</a>
-                <div class="dropdown-menu" aria-labelledby="dropdown04">
-                  {% for shop in list_of_shops %}
+            </li -->
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Postać</a>
+              <div class="dropdown-menu" aria-labelledby="dropdown04">
+                {% if user.selected_character.location.id != 0 %}
+                  <a class="dropdown-item" href="/choose_leader/">Dołącz do drużyny</a>
+                  <a class="dropdown-item" href="/make_own_party/">Wystąp z drużyny</a>
+                  {% if user.selected_character.location.template.is_settlement or user.selected_character.location.id == 1 %}
+                    {% for next_location in user.selected_character.location.template.next_location.all %}
+                    <a class="dropdown-item" href="{{ next_location.next_location_url }}">{{ next_location.next_location_desc }}</a>
+                    {% endfor %}
 
-                  <a class="dropdown-item" href="/visit_shop/{{ shop.id }}/">{{ shop.name }}</a>
+                  {% endif %}
+                {% else %}
+                  <a class="dropdown-item" href="/break_adventure/">Przerwij przygodę</a>
+
+                {% endif %}
+                <a class="dropdown-item" href="/show_event/">Wydarzenia</a>
+                <!--a class="dropdown-item" href="/privacy/">Polityka prywatności</a -->
+              </div>
+            </li>
+            {% if user.selected_character.location.template.is_settlement %}
+            <li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Miejsca</a>
+              <div class="dropdown-menu" aria-labelledby="dropdown04">
+                <a class="dropdown-item" href="/visit_alehouse/">Alehouse</a>
+                {% for shop in user.selected_character.location.shop.all %}
+
+                <a class="dropdown-item" href="/visit_shop/{{ shop.id }}/">{{ shop.name }}</a>
+                {% endfor %}
+                <!-- a class="dropdown-item" href="/regulamin-wplat/">Regulamin wpłat</a>
+                  <a class="dropdown-item" href="/privacy/">Polityka prywatności</a -->
+              </div>
+            </li>
+            {% else %}
+              {% if user.selected_character.leader == user.selected_character %}
+              <li class="nav-item dropdown">
+                <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Drużyna</a>
+                <div class="dropdown-menu" aria-labelledby="dropdown04">
+                  {% for next_location in user.selected_character.location.template.next_location.all %}
+                  <a class="dropdown-item" href="{{ next_location.next_location_url }}">{{ next_location.next_location_desc }}</a>
                   {% endfor %}
-              <a class="dropdown-item" href="/visit_alehouse/">Alehouse</a>
-              <a class="dropdown-item" href="/visit_alchemist_laboratory/">Laboratorium Alchemiczne</a>
-              <a class="dropdown-item" href="/visit_dwarf_guildmasters/">Gildia Krasnoludów</a>
-              <a class="dropdown-item" href="/visit_elf_quarter/">Kwatera Elfów</a>
-              <a class="dropdown-item" href="/visit_gambling_house/">Kasyno</a>
-              <a class="dropdown-item" href="/visit_temple/">Świątynia</a>
-              <a class="dropdown-item" href="/visit_wizards_guild/">Gildia Czarodziejów</a>
+                </div>
+              </li>
               {% endif %}
-              <!-- a class="dropdown-item" href="/regulamin-wplat/">Regulamin wpłat</a>
-              <a class="dropdown-item" href="/privacy/">Polityka prywatności</a -->
-            </div>
-          </li>
-          {% endif %}
-          <!--li class="nav-item dropdown">
-            <a class="nav-link dropdown-toggle" href="#" id="dropdown05" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Ranking</a>
-            <div class="dropdown-menu" aria-labelledby="dropdown05">
+            {% endif %}
+
+            <!--li class="nav-item dropdown">
+              <a class="nav-link dropdown-toggle" href="#" id="dropdown05" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Ranking</a>
+              <div class="dropdown-menu" aria-labelledby="dropdown05">
               <a class="dropdown-item" href="/ranking/">Ranking</a>
 
-            </div>
-          </li>
+              </div>
+              </li>
 
-          <li class="nav-item">
-            <a class="nav-link" href="/media-about-us/">Media o nas</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/faq/">Q&A</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/materials/">Materiały</a>
-          </li>
-          <li class="nav-item">
-            <a class="nav-link" href="/contact/">Kontakt</a>
-          </li>
-          <!- li class="nav-item">
-            <a class="nav-link disabled" href="#">Disabled</a>
-          </li -->
-        </ul>
+              <li class="nav-item">
+              <a class="nav-link" href="/media-about-us/">Media o nas</a>
+              </li>
+              <li class="nav-item">
+              <a class="nav-link" href="/faq/">Q&A</a>
+              </li>
+              <li class="nav-item">
+              <a class="nav-link" href="/materials/">Materiały</a>
+              </li>
+              <li class="nav-item">
+              <a class="nav-link" href="/contact/">Kontakt</a>
+              </li>
+              <!- li class="nav-item">
+              <a class="nav-link disabled" href="#">Disabled</a>
+              </li -->
+       </ul>
        {% endif %}
        <ul class="navbar-nav ml-auto">
           <li class="nav-item dropdown">

@@ -80,41 +80,65 @@ def character_list(request):
 
 @login_required
 def show_event(request):
-    try:
-        you = request.user.selected_character
-        event = Event.objects.filter(character=you, done =False).order_by('created').first()
-        if event is None:
-            messages.success(request, 'End of events.')
+    you = request.user.selected_character
+    event = Event.objects.filter(character=you, done =False).order_by('created').first()
+   
+    if event is None:
+        messages.success(request, 'End of events.')
+        journey = you.location
+        if you.location.next_location:
+            messages.success(request, 'Jest Lokacja.')
             you.location=you.location.next_location
-            you.save()
-            return redirect('/')
-        try:
-            commands = json.loads(event.command)
-        except AttributeError:
-            commands = {}
-
-        logger.error("commands: {}".format(commands))    
-        if request.method == 'POST':
-            form = EventForm(request.POST,commands=commands, after_form=event.after_form)
-
-            if form.is_valid():
-                for q, v in form.data.items():
-                    if q.startswith('btn_'):
-                        messages.success(request, commands['conditional'][v]['choice_print'])
-
-                event.done = True
-                event.save()
-                return redirect('/show_event/')
         else:
-            form = EventForm(commands=commands, after_form=event.after_form)
+            messages.success(request, 'Robimy nowe settlement.')
+            new_settlement = Location.objects.create(template=you.location.template.next_location.all()[0], name="settlement")
+            new_settlement.name = "{} {}".format(new_settlement.template.name,new_settlement.id)
+            available_shops = Shop.objects.all()
+            for shop in available_shops:
+                if roll("{}D6".format(new_settlement.template.no_of_dices))>=shop.shop_type.availability:
+                    new_settlement.shop.add(shop)
 
-        context = {
-            'event' : event,
-            'form' : form,
-        }
-        return render (request,'game/event.html', context)
-    except ObjectDoesNotExist:
-        return redirect('/characters/')
+            # Tu dodajemy shopy!!!
+            new_settlement.save()
+        
+
+            journey.next_location = new_settlement
+            journey.save()
+
+            you.location=new_settlement
+
+        you.save()
+        
+        if not journey.character_set.all():
+            journey.delete()
+         
+        return redirect('/')
+
+    try:
+        commands = json.loads(event.command)
+    except AttributeError:
+        commands = {}
+
+    logger.error("commands: {}".format(commands))    
+    if request.method == 'POST':
+        form = EventForm(request.POST,commands=commands, after_form=event.after_form)
+
+        if form.is_valid():
+            for q, v in form.data.items():
+                if q.startswith('btn_'):
+                    messages.success(request, commands['conditional'][v]['choice_print'])
+
+            event.done = True
+            event.save()
+            return redirect('/show_event/')
+    else:
+        form = EventForm(commands=commands, after_form=event.after_form)
+
+    context = {
+        'event' : event,
+        'form' : form,
+    }
+    return render (request,'game/event.html', context)
 
 
 
@@ -227,28 +251,87 @@ def make_own_party(request):
          return redirect('/')
 
 @login_required
-def trip_to(request):
-    if request.method == 'POST':
-        form = JourneyDestinationForm(request.POST)
-        if form.is_valid():
-            you = request.user.selected_character#Character.objects.get(pk=request.session['character_id'])
-            channel_layer = get_channel_layer()
-            trip_to = form.cleaned_data['destination']
-            you.location=Location.objects.get(code="InJourneyTo{}".format(trip_to.destination))
-            you.save()
-            for roll in range(1,trip_to.rolls +1):
-                event_roll = "{}{}".format(roll('2D6'))
-                #event_roll = "16" #TB: Devel line
-                event = EventTemplate.objects.get(number=event_roll,event_type__name='Hazards')
+def begin_adventure(request):
+    companions = Character.objects.filter(leader=request.user.selected_character)
+    adventure_template = LocationTemplate.objects.get(pk=1)
+    adventure = Location.objects.create(template = adventure_template, name="caves")
+    adventure.name="caves {}".format(adventure.id)
+    adventure.save()
 
-                add_party_event(event, you.leader)
+    for companion in companions:
+        companion.location = adventure
+        companion.save()
 
-    else:
-        form = JourneyDestinationForm()
-    context = {
-        'form' : form,
-    }
-    return render (request,'game/simple_form.html', context)
+    return redirect('/')
+
+
+@login_required
+def end_adventure(request):
+    companions = Character.objects.filter(leader=request.user.selected_character)
+    prev_location = request.user.selected_character.location
+    after_template = LocationTemplate.objects.get(pk=2)
+    after = Location.objects.create(template = after_template, name="after adventure")
+    after.name="after adventure {}".format(after.id)
+    after.save()
+    for companion in companions:
+        companion.location = after
+        companion.save()
+
+    prev_location.delete()
+
+    return redirect('/')
+
+@login_required
+def wait_outside(request):
+    you = request.user.selected_character
+    prev_location = you.location
+    you.location = Location.objects.get(pk=1)
+    you.save()
+
+    if not prev_location.character_set.all():
+        prev_location.delete()
+
+    return redirect('/')
+
+
+@login_required
+def prepare_to_adventure(request):
+    you = request.user.selected_character
+    prev_location = you.location
+    you.location = Location.objects.get(pk=0)
+    you.save()
+
+    if prev_location.id != 1 and not prev_location.character_set.all():
+        prev_location.delete()
+
+    return redirect('/')
+
+
+@login_required
+def trip_to(request, target_id):
+    if target_id in [3,4,5]:
+        companions = Character.objects.filter(leader=request.user.selected_character)
+        prev_location = request.user.selected_character.location
+        journey_template = LocationTemplate.objects.get(pk=target_id)
+        journey = Location.objects.create(template = journey_template, name="journey to")
+        journey.name="journey {}".format(journey.id)
+        journey.save()
+        for companion in companions:
+            companion.location = journey
+            companion.save()
+
+        prev_location.delete()
+         
+#        channel_layer = get_channel_layer() # nie jestem pewny czy to jest potrzebne. Czy tutaj.....
+
+        for roll in range(1,journey.template.no_of_dices+1):
+            event_roll = "{}{}".format(roll('2D6'))
+            #event_roll = "16" #TB: Devel line
+            event = EventTemplate.objects.get(number=event_roll,event_type__name='Hazards')
+
+            add_party_event(event, you.leader)
+
+    return redirect('/')
 
 def visit_shop(request, shop_id):
     from django.db.models.expressions import Func
@@ -274,7 +357,7 @@ def visit_shop(request, shop_id):
     shop = Shop.objects.get(pk=shop_id) 
     you = request.user.selected_character
     my_equipments = Equipment.objects.filter(item=OuterRef('pk'), owner=you)
-    possible_items = Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
+    possible_items = Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.template.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
     context = {
         'shop' : shop,
         'possible_items' : possible_items,
