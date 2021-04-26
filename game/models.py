@@ -99,15 +99,10 @@ class LocationTemplate(models.Model):
 class Location(models.Model):
     name = models.CharField(max_length=100)
     template = models.ForeignKey(LocationTemplate, on_delete = models.RESTRICT, null=True, blank=True)
-    shop = models.ManyToManyField(Shop,through="ShopAtLocation")
     next_location = models.ForeignKey('self', on_delete = models.RESTRICT, null=True, blank=True)
 
     def __str__(self):
         return "{}".format(self.name)
-
-class ShopAtLocation(models.Model):
-    location = models.ForeignKey(Location, on_delete =models.CASCADE)
-    shop = models.ForeignKey(Shop, on_delete =models.CASCADE)
 
 class Character(models.Model):
     created = models.DateTimeField(auto_now_add=True)
@@ -241,7 +236,9 @@ class ShopStatus(models.Model):
     name = models.CharField(max_length=20)
 
 class SettlementActivity(models.Model):
-    character =  models.ForeignKey(Character, on_delete = models.CASCADE)
-    shop_at_location = models.ForeignKey(ShopAtLocation, on_delete = models.CASCADE)
-    status = models.ForeignKey(ShopStatus, on_delete = models.CASCADE)
+    day = models.PositiveIntegerField(default = 1)
+    character =  models.ForeignKey(Character, on_delete = models.RESTRICT)
+    status = models.ForeignKey(ShopStatus, on_delete = models.RESTRICT)
+    location = models.ForeignKey(Location, on_delete = models.CASCADE)
+    shop = models.ForeignKey(Shop, on_delete = models.RESTRICT)
 

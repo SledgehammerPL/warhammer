@@ -35,9 +35,9 @@
             <li class="nav-item dropdown">
               <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Miejsca</a>
               <div class="dropdown-menu" aria-labelledby="dropdown04">
-                {% for sa in user.selected_character.settlementactivity_set.all %}
+                {% for shop in list_of_shops %}
 
-                <a class="dropdown-item{% if sa.status.id == 0 %} disabled {% endif %}" href="/visit_shop/{{ sa.shop_at_location.id }}/">{{ sa.shop_at_location.shop.name }}</a>
+                <a class="dropdown-item" href="/look_for_shop/{{ shop.id }}/">{{ shop.name }}</a>
                 {% endfor %}
               </div>
             </li>

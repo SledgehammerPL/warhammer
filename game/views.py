@@ -5,7 +5,7 @@ from .forms import *
 from .models import * 
 from random import randint
 from django.contrib.auth.decorators import login_required
-from django.db.models import Sum, F, Q,  ExpressionWrapper, BooleanField, Exists, OuterRef
+from django.db.models import Max, Sum, F, Q,  ExpressionWrapper, BooleanField, Exists, OuterRef
 from django.db.models.functions import Round
 from django.contrib import messages
 from channels.layers import get_channel_layer
@@ -94,19 +94,6 @@ def show_event(request):
                 messages.success(request, 'Robimy nowe settlement.')
                 new_settlement = Location.objects.create(template=you.location.template.next_location.all()[0], name="settlement")
                 new_settlement.name = "{} {}".format(new_settlement.template.name,new_settlement.id)
-                available_shops = Shop.objects.all()
-                # Tu dodajemy shopy!!!
-                for shop in available_shops:
-                    if roll("{}D6".format(new_settlement.template.no_of_dices))>=shop.shop_type.availability:
-                        new_settlement.shop.add(shop)
-                
-                new_settlement.save()
-
-                # A tu ustawiamy, ze sa jeszcze nie odwiedzone!!!
-                for real_shop in new_settlement.shopatlocation_set.all():
-                    SettlementActivity.objects.create(character=you, shop_at_location=real_shop, status=ShopStatus.objects.get(pk=1))
-                
-            
 
                 journey.next_location = new_settlement
                 journey.save()
@@ -338,8 +325,40 @@ def trip_to(request, target_id):
             add_party_event(event, you.leader)
 
     return redirect('/')
+def look_for_shop(request, shop_id):
+    you = request.user.selected_character
+    day = SettlementActivity.objects.filter(character=you, location=you.location).aggregate(Max('day'))['day__max'] or 1
+    activity, created = SettlementActivity.objects.get_or_create(character=you, location=you.location, shop=Shop.objects.get(pk=shop_id), defaults={'status': ShopStatus.objects.get(pk=1), 'day': day})
+    
+    if activity.status.id==0:
+        messages.success(request, 'tu już byłeś - wypad')
+        return redirect('/')
+    else:
+        success = roll('{}D6'.format(you.location.template.no_of_dices))>Shop.objects.get(pk=shop_id).shop_type.availability
+        if success:
+            if shop.shop_type_id == 3:
+                activity.status=ShopStatus.objects.get(pk=1)
+                activity.save()
+                return redirect('/visit_alehouse/')
+            if shop.shop_type_id == 4:
+                activity.status=ShopStatus.objects.get(pk=0)
+                activity.save()
+                return redirect('/visit_gambling_house/')
+            if shop.shop_type_id == 5:
+                activity.status=ShopStatus.objects.get(pk=0)
+                activity.save()
+                return redirect('/visit_temple/')
+            else:
+                activity.status=ShopStatus.objects.get(pk=0)
+                activity.save()
+                return redirect('/visit_shop/{}/'.format(shop_id))
+        else:
+            messages.success(request, 'Cały dzień stracony i nic.')
+            activity.status=ShopStatus.objects.get(pk=-1)
+            activity.save()
+            return redirect('/')
 
-def visit_shop(request, shopatlocation_id):
+def visit_shop(request, shop_id):
     from django.db.models.expressions import Func
     from django.db.models.functions.mixins import (
         FixDecimalInputMixin, NumericOutputFieldMixin,
@@ -360,27 +379,215 @@ def visit_shop(request, shopatlocation_id):
        def get_group_by_cols(self, alias=None):
            return []
 
-    sal = ShopAtLocation.objects.get(pk=shopatlocation_id) 
-    activity = SettlementActivity.objects.get(shop_at_location=sal)
-    if activity.status.id==0:
-        messages.success(request, 'tu już byłeś - wypad')
-        return redirect('/')
+    shop = Shop.objects.get(pk=shop_id)
+
+    you = request.user.selected_character
+    my_equipments = Equipment.objects.filter(item=OuterRef('pk'), owner=you)
+    possible_items = Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.template.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
+    context = {
+        'shop' : shop,
+        'possible_items' : possible_items,
+        'user' : request.user,
+    }
+    return render (request,'game/visit_shop.html', context)
+
+def visit_temple(request):
+    context = {
+        'form' : form,
+    }
+    return render (request,'game/simple_form.html', context)
+
+def visit_gambling_house(request):
+    context = {
+        'form' : form,
+    }
+    return render (request,'game/simple_form.html', context)
+
+
+def visit_alehouse(request):
+    you = request.user.selected_character
+    event_roll=roll(you.warrior_type.alehouse_roll)
     
-    activity.status=ShopStatus.objects.get(pk=0)
-    activity.save()
-    if sal.shop.shop_type_id == 3:
-        return redirect('/visit_alehouse/')
-    if sal.shop.shop_type_id == 4:
-        return redirect('/visit_gambling_house/')
-    if sal.shop.shop_type_id == 5:
+    event = EventTemplate.objects.get(number=event_roll,event_type__name='Alehouse')
+    add_warrior_event(event, you)
+    return redirect('/show_event/')
+
+####################################################
+
+@csrf_protect
+def buy_item(request):
+    code = request.POST.get("item")
+    price = int(request.POST.get("price"))
+    seller = request.POST.get("seller")
+    buyer = request.user.selected_character
+    if buyer.buy_item(code, price, seller):
+        result = "ok"
+    else:
+        result = "no way";
+    return JsonResponse({
+        'result' : result,
+        'gold' : buyer.get_current_gold(),
+        'price' : price,
+        'item' : Item.objects.get(code=code).name,
+    })
+@csrf_protect
+def sell_item(request):
+    code = request.POST.get("item")
+    price = int(request.POST.get("price"))
+    buyer = request.POST.get("buyer")
+    seller = request.user.selected_character
+    result = seller.sell_item(code, price, buyer)
+    return JsonResponse({
+        'result' : result,
+        'gold' : seller.get_current_gold(),
+        'price' : price,
+        'item' : Item.objects.get(code=code).name,
+    })
+            else:
+                activity.status=ShopStatus.objects.get(pk=0)
+                activity.save()
+                return redirect('/visit_shop/{}/'.format(shop_id))
+        else:
+            messages.success(request, 'Cały dzień stracony i nic.')
+            activity.status=ShopStatus.objects.get(pk=-1)
+            activity.save()
+            return redirect('/')
+
+def visit_shop(request, shop_id):
+    from django.db.models.expressions import Func
+    from django.db.models.functions.mixins import (
+        FixDecimalInputMixin, NumericOutputFieldMixin,
+    )
+    class Random(NumericOutputFieldMixin, Func):
+       function = 'RANDOM'
+       arity = 0
+
+       def as_mysql(self, compiler, connection, **extra_context):
+           return super().as_sql(compiler, connection, function='RAND', **extra_context)
+
+       def as_oracle(self, compiler, connection, **extra_context):
+           return super().as_sql(compiler, connection, function='DBMS_RANDOM.VALUE', **extra_context)
+
+       def as_sqlite(self, compiler, connection, **extra_context):
+           return super().as_sql(compiler, connection, function='RAND', **extra_context)
+
+       def get_group_by_cols(self, alias=None):
+           return []
+
+    # check if you find
+    shop = Shop.objects.get(pk=shop_id)
+    if shop.shop_type_id == 4:
+       return redirect('/visit_gambling_house/')
+    if shop.shop_type_id == 5:
         return redirect('/visit_temple/')
 
 
     you = request.user.selected_character
     my_equipments = Equipment.objects.filter(item=OuterRef('pk'), owner=you)
-    possible_items = Item.objects.filter(available_in=sal.shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.template.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
+    possible_items = Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.template.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
     context = {
-        'shop' : sal.shop,
+        'shop' : shop,
+        'possible_items' : possible_items,
+        'user' : request.user,
+    }
+    return render (request,'game/visit_shop.html', context)
+
+def visit_temple(request):
+    context = {
+        'form' : form,
+    }
+    return render (request,'game/simple_form.html', context)
+
+def visit_gambling_house(request):
+    context = {
+        'form' : form,
+    }
+    return render (request,'game/simple_form.html', context)
+
+
+def visit_alehouse(request):
+    you = request.user.selected_character
+    event_roll=roll(you.warrior_type.alehouse_roll)
+    
+    event = EventTemplate.objects.get(number=event_roll,event_type__name='Alehouse')
+    add_warrior_event(event, you)
+    return redirect('/show_event/')
+
+####################################################
+
+@csrf_protect
+def buy_item(request):
+    code = request.POST.get("item")
+    price = int(request.POST.get("price"))
+    seller = request.POST.get("seller")
+    buyer = request.user.selected_character
+    if buyer.buy_item(code, price, seller):
+        result = "ok"
+    else:
+        result = "no way";
+    return JsonResponse({
+        'result' : result,
+        'gold' : buyer.get_current_gold(),
+        'price' : price,
+        'item' : Item.objects.get(code=code).name,
+    })
+@csrf_protect
+def sell_item(request):
+    code = request.POST.get("item")
+    price = int(request.POST.get("price"))
+    buyer = request.POST.get("buyer")
+    seller = request.user.selected_character
+    result = seller.sell_item(code, price, buyer)
+    return JsonResponse({
+        'result' : result,
+        'gold' : seller.get_current_gold(),
+        'price' : price,
+        'item' : Item.objects.get(code=code).name,
+    })
+            else:
+                activity.status=ShopStatus.objects.get(pk=0)
+                activity.save()
+                return redirect('/visit_shop/{}/'.format(shop_id))
+        else:
+            messages.success(request, 'Cały dzień stracony i nic.')
+            activity.status=ShopStatus.objects.get(pk=-1)
+            activity.save()
+            return redirect('/')
+
+def visit_shop(request, shop_id):
+    from django.db.models.expressions import Func
+    from django.db.models.functions.mixins import (
+        FixDecimalInputMixin, NumericOutputFieldMixin,
+    )
+    class Random(NumericOutputFieldMixin, Func):
+       function = 'RANDOM'
+       arity = 0
+
+       def as_mysql(self, compiler, connection, **extra_context):
+           return super().as_sql(compiler, connection, function='RAND', **extra_context)
+
+       def as_oracle(self, compiler, connection, **extra_context):
+           return super().as_sql(compiler, connection, function='DBMS_RANDOM.VALUE', **extra_context)
+
+       def as_sqlite(self, compiler, connection, **extra_context):
+           return super().as_sql(compiler, connection, function='RAND', **extra_context)
+
+       def get_group_by_cols(self, alias=None):
+           return []
+
+    # check if you find
+    shop = Shop.objects.get(pk=shop_id)
+    if shop.shop_type_id == 4:
+       return redirect('/visit_gambling_house/')
+    if shop.shop_type_id == 5:
+        return redirect('/visit_temple/')
+
+
+    you = request.user.selected_character
+    my_equipments = Equipment.objects.filter(item=OuterRef('pk'), owner=you)
+    possible_items = Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.template.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
+    context = {
+        'shop' : shop,
         'possible_items' : possible_items,
         'user' : request.user,
     }
