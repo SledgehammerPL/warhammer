@@ -21,6 +21,7 @@ urlpatterns = [
   path('visit_shop/<int:shop_id>/',views.visit_shop, name='visit_shop'),
   path('prepare_to_adventure/',views.prepare_to_adventure, name='prepare_to_adventure'),
   path('wait_outside/',views.wait_outside, name='wait_outside'),
+  path('end_of_day/',views.end_of_day, name='end_of_day'),
   path('visit_alehouse/',views.visit_alehouse, name='visit_alehouse'),
   path('visit_temple/',views.visit_temple, name='visit_temple'),
   path('visit_gambling_house/',views.visit_gambling_house, name='visit_gambling_house'),

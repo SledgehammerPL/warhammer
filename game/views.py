@@ -20,6 +20,9 @@ logger = logging.getLogger('error_logger')
 # Create your views here.
 @login_required
 def index(request):
+    if request.user.selected_character.active_day:
+        redirect('/end_of_day/')
+
     context = {
     }
     return render (request,'game/index.html', context)
@@ -87,6 +90,8 @@ def show_event(request):
         messages.success(request, 'End of events.')
         if you.location.template.is_journey: 
             journey = you.location
+            you.day_in_settlement = 1
+            you.active_day = False
             if you.location.next_location:
                 messages.success(request, 'Dotarłeś.')
                 you.location=you.location.next_location
@@ -94,6 +99,7 @@ def show_event(request):
                 messages.success(request, 'Robimy nowe settlement.')
                 new_settlement = Location.objects.create(template=you.location.template.next_location.all()[0], name="settlement")
                 new_settlement.name = "{} {}".format(new_settlement.template.name,new_settlement.id)
+                new_settlement.save()
 
                 journey.next_location = new_settlement
                 journey.save()
@@ -318,23 +324,31 @@ def trip_to(request, target_id):
 #        channel_layer = get_channel_layer() # nie jestem pewny czy to jest potrzebne. Czy tutaj.....
 
         for roll in range(1,journey.template.no_of_dices+1):
-            event_roll = "{}{}".format(roll('2D6'))
-            #event_roll = "16" #TB: Devel line
+            event_roll = "{}{}".format(roll('1D6'),roll('1D6'))
             event = EventTemplate.objects.get(number=event_roll,event_type__name='Hazards')
 
             add_party_event(event, you.leader)
 
     return redirect('/')
+
 def look_for_shop(request, shop_id):
     you = request.user.selected_character
-    day = SettlementActivity.objects.filter(character=you, location=you.location).aggregate(Max('day'))['day__max'] or 1
-    activity, created = SettlementActivity.objects.get_or_create(character=you, location=you.location, shop=Shop.objects.get(pk=shop_id), defaults={'status': ShopStatus.objects.get(pk=1), 'day': day})
+    if you.active_day:
+        return redirect('/end_of_day/')
+
+    day = you.day_in_settlement
     
+    shop = Shop.objects.get(pk=shop_id)
+    activity, created = SettlementActivity.objects.get_or_create(character=you, location=you.location, shop=shop, defaults={'status': ShopStatus.objects.get(pk=1), 'day': day})
+
+
     if activity.status.id==0:
         messages.success(request, 'tu już byłeś - wypad')
         return redirect('/')
     else:
         success = roll('{}D6'.format(you.location.template.no_of_dices))>Shop.objects.get(pk=shop_id).shop_type.availability
+        you.active_day = True
+        you.save()
         if success:
             if shop.shop_type_id == 3:
                 activity.status=ShopStatus.objects.get(pk=1)
@@ -403,7 +417,6 @@ def visit_gambling_house(request):
     }
     return render (request,'game/simple_form.html', context)
 
-
 def visit_alehouse(request):
     you = request.user.selected_character
     event_roll=roll(you.warrior_type.alehouse_roll)
@@ -411,6 +424,20 @@ def visit_alehouse(request):
     event = EventTemplate.objects.get(number=event_roll,event_type__name='Alehouse')
     add_warrior_event(event, you)
     return redirect('/show_event/')
+
+def end_of_day(request):
+    payer = request.user.selected_character
+    if payer.pay_living_expenses():
+        payer.day_in_settlement+=1
+        payer.active_day = False
+        payer.save()
+        event_roll = "{}{}".format(roll('1D6'),roll('1D6'))
+        event = EventTemplate.objects.get(number=event_roll,event_type__name='Settlement Events')
+        add_warrior_event(event, payer)
+        return redirect('/show_event/')
+    else:
+        return redirect('/wait_outside/')
+
 
 ####################################################
 

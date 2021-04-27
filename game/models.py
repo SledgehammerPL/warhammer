@@ -93,6 +93,7 @@ class LocationTemplate(models.Model):
     next_location_desc = models.CharField(max_length=100)
     next_location_url = models.CharField(max_length=100)
     no_of_dices = models.PositiveIntegerField(default=0)
+    living_expenses = models.PositiveIntegerField(default=1)
 
     def __str__(self):
         return "{}".format(self.name)
@@ -113,6 +114,9 @@ class Character(models.Model):
     starting_wounds = models.PositiveIntegerField()
     leader = models.ForeignKey("self", on_delete=models.RESTRICT, related_name ='leader_set', null = True)
     location = models.ForeignKey(Location, on_delete=models.RESTRICT, default=0)
+    active_day = models.BooleanField(default=False)
+    day_in_settlement = models.PositiveIntegerField(default=1)
+
     def get_current_gold(self):
         return Gold.objects.filter(owner=self).aggregate(suma=Sum('amount'))['suma']
 
@@ -122,6 +126,15 @@ class Character(models.Model):
     def remove_gold(self,amount, why):
         amount = amount if amount < self.get_current_gold() else self.get_current_gold()
         Gold.objects.create(owner = self, amount = -amount, description = why) if amount>0 else None
+
+    def pay_living_expenses(self):
+        living_expenses = self.location.template.living_expenses
+        if self.get_current_gold()>living_expenses:
+            self.remove_gold(living_expenses, 'Living Expenses in {}'.format(self.location.name))
+            return True
+        else:
+            return False
+
     def buy_item(self, code, price, seller):
         if self.get_current_gold()>=price:
             item= Item.objects.get(code=code)
