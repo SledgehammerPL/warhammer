@@ -1,6 +1,6 @@
 <nav class="navbar navbar-expand-md navbar-dark bg-dark">
-  <a style="text-align:center" class="navbar-brand" href="/characters/{{ request.user.selected_character.id }}">{{ user.selected_character.name }}<div style="font-size:10px">({{ user.selected_character.leader.name }}'s Party)</div><div style="font-size:10px">{{ user.selected_character.location.name }}</div>
-    <div style="font-size:10px">day {{ user.selected_character.day_in_settlement }}</div></a>
+  <a style="text-align:center" class="navbar-brand" href="/characters/{{ request.user.selected_character.id }}">{{ user.selected_character.name }}<div style="font-size:10px">({{ user.selected_character.leader.name }}'s Party)</div><div style="font-size:10px">{{ user.selected_character.location.name }}</div>{% if user.selected_character.ticks != 0 %}
+    <div style="font-size:10px">{{ user.selected_character.location.template.name_of_period }} {{ user.selected_character.ticks }}</div>{% endif %}</a>
   {{ request.user.selected_character.leader.name|json_script:"leader-name" }}
       <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarsExample04" aria-controls="navbarsExample04" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>

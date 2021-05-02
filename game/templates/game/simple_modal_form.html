@@ -8,18 +8,14 @@
 <div class="container">
   <div class="row justify-content-center">
     <div class="col-12">
+      <h1 class="mt-2">&nbsp;</h1>
+      <hr class="mt-0 mb-4">
       <div class="modal fade" id="myModal" tabindex="-1" role="dialog" aria-labelledby="myModalLabel" aria-hidden="true" >
         <div class="modal-dialog" role="document">
           <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title" id="exampleModalLabel">{{ event.template.number }} {{ event.template.title }}</h5>
-              </div>
             <div class="modal-body">
-              {% autoescape off %}
-              <p>{{ event.before_form|linebreaksbr }}</p>
-              {% endautoescape %}
+              {{ text }}
               {% crispy form %}
-
             </div>
           </div>
         </div>
@@ -31,9 +27,10 @@
   $('#myModal').modal({
     backdrop: 'static',
     keyboard: false
-  })
-    $(window).on('load', function() {
-        $('#myModal').modal('show');
-    });
+})
+  $(window).on('load', function() {
+    $('#myModal').modal('show');
+  });
 </script>
+
 {% endblock %}

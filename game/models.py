@@ -61,10 +61,13 @@ class WarriorLevelTemplate(models.Model):
 class ShopType(models.Model):
     name = models.CharField(max_length=100, unique=True)
     availability = models.PositiveIntegerField(default=1)
+    def __str__(self):
+        return "{}".format(self.name)
 
 class Shop(models.Model):
     name = models.CharField(max_length=100, unique=True)
     shop_type = models.ForeignKey(ShopType, on_delete=models.RESTRICT, null=True)
+    forbidden = models.ManyToManyField(WarriorType)
 
     def __str__(self):
         return "{}".format(self.name)
@@ -94,7 +97,7 @@ class LocationTemplate(models.Model):
     next_location_url = models.CharField(max_length=100)
     no_of_dices = models.PositiveIntegerField(default=0)
     living_expenses = models.PositiveIntegerField(default=1)
-
+    name_of_period = models.CharField(max_length=4, default='day')
     def __str__(self):
         return "{}".format(self.name)
 class Location(models.Model):
@@ -115,17 +118,32 @@ class Character(models.Model):
     leader = models.ForeignKey("self", on_delete=models.RESTRICT, related_name ='leader_set', null = True)
     location = models.ForeignKey(Location, on_delete=models.RESTRICT, default=0)
     active_day = models.BooleanField(default=False)
-    day_in_settlement = models.PositiveIntegerField(default=1)
+    ticks = models.PositiveIntegerField(default=1)
 
     def get_current_gold(self):
         return Gold.objects.filter(owner=self).aggregate(suma=Sum('amount'))['suma']
 
     def add_gold(self,amount, why):
         Gold.objects.create(owner = self, amount = amount, description = why) if amount>0 else None
+        return self.get_current_gold()
 
     def remove_gold(self,amount, why):
         amount = amount if amount < self.get_current_gold() else self.get_current_gold()
         Gold.objects.create(owner = self, amount = -amount, description = why) if amount>0 else None
+        return self.get_current_gold()
+
+    def remove_gold_and_most_valuable_item_if_not_enough(self, amount, why):
+        mvi_name = False
+        if self.get_current_gold()<amount:
+            try:
+                most_valuable_item = self.equipment_set.order_by('-item__sell_price')[0]
+                mvi_name = most_valuable_item.item.name
+                most_valuable_item.delete()
+            except IndexError:
+                pass
+
+        self.remove_gold(amount,why)
+        return (self.get_current_gold(),mvi_name)
 
     def pay_living_expenses(self):
         living_expenses = self.location.template.living_expenses
@@ -231,7 +249,7 @@ class EventTemplate(models.Model):
 class Event(models.Model):
     created = models.DateTimeField(auto_now_add=True)
     character = models.ForeignKey(Character, on_delete = models.CASCADE)
-    event_template = models.ForeignKey(EventTemplate, on_delete = models.CASCADE)
+    template = models.ForeignKey(EventTemplate, on_delete = models.CASCADE)
     before_form = models.TextField(blank=True)
     after_form = models.TextField(blank=True)
     done = models.BooleanField(default =False)

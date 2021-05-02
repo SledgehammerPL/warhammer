@@ -1,6 +1,6 @@
 from django import forms
 from people.models import Person
-from .models import WarriorType, Character, JourneyTable
+from .models import WarriorType, Character, JourneyTable, Equipment
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, Fieldset,HTML,Button, ButtonHolder
 from django.db.models import F
@@ -8,6 +8,61 @@ from django.utils.text import slugify
 import json
 import logging
 logger = logging.getLogger('error_logger')
+
+class GamblingForm(forms.Form):
+    bet = forms.IntegerField(label="how much you bet?",min_value=1, initial=100,max_value=200)
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout()
+        self.helper.layout.append(
+            Column(
+                Row(Field('bet')),
+                Submit('Roll','Roll'),
+            )
+        )
+
+class TempleForm(forms.Form):
+
+    def __init__(self, *args, **kwargs):
+        gold = kwargs.pop('gold')
+        super().__init__(*args, **kwargs)
+        self.helper = FormHelper()
+        self.helper.layout = Layout()
+        if gold>49:
+            self.helper.layout.append(
+                Div(
+                    HTML('<input type="submit" class="btn btn-secondary" value="Exit" name="Exit">'),
+                    Submit('Give 50 Gold and pray','Give 50 Gold and pray'),
+                    css_class="modal-footer"
+                )
+            )
+        else:
+            self.helper.layout.append(
+                Div(
+                    HTML('<input type="submit" class="btn btn-secondary" value="Exit" name="Exit">'),
+                    css_class="modal-footer"
+                )
+            )
+
+class AlchemistsForm(forms.Form):
+    dices = forms.IntegerField(label="how much dices?",min_value=1, initial=1)
+    item = forms.ModelChoiceField(queryset=None)
+    def __init__(self, *args, **kwargs):
+        character = kwargs.pop('character')
+        super().__init__(*args, **kwargs)
+        self.fields['item'].queryset = Equipment.objects.filter(owner=character)
+
+        self.helper = FormHelper()
+        self.helper.layout = Layout()
+        self.helper.layout.append(
+            Column(
+                Row(Field('item')),
+                Row(Field('dices')),
+                Submit('Turn into Gold','Turn into Gold'),
+            )
+        )
+
 
 
 class JourneyDestinationForm(forms.Form):
@@ -50,7 +105,7 @@ class EventForm(forms.Form):
                     self.helper.layout.append('choice_{}_{}'.format(question.lower().replace(' ','_'),i))
 #            self.helper.layout.append(Submit("btn_"+question,question))
         self.helper.layout.append(HTML("<p>{}</p>".format(after_form)))
-        self.helper.layout.append(Submit('submit','Next Event'))
+        self.helper.layout.append(Div(Submit('submit','OK'),css_class="modal-footer"))
         self.helper.all().wrap_together(Column)
 
 

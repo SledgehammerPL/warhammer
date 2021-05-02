@@ -11,7 +11,7 @@ from django.contrib import messages
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.template import Template, Context
-from .functions import add_party_event, add_warrior_event, roll
+from .functions import add_party_event, add_warrior_event, Roll
 from django.views.decorators.csrf import csrf_protect
 
 import logging
@@ -90,7 +90,7 @@ def show_event(request):
         messages.success(request, 'End of events.')
         if you.location.template.is_journey: 
             journey = you.location
-            you.day_in_settlement = 1
+            you.ticks = 1
             you.active_day = False
             if you.location.next_location:
                 messages.success(request, 'Dotarłeś.')
@@ -118,7 +118,7 @@ def show_event(request):
     except AttributeError:
         commands = {}
 
-    logger.error("commands: {}".format(commands))    
+    logger.error("[SE]commands: {}".format(commands))    
     if request.method == 'POST':
         form = EventForm(request.POST,commands=commands, after_form=event.after_form)
 
@@ -126,9 +126,11 @@ def show_event(request):
             for q, v in form.data.items():
                 if q.startswith('btn_'):
                     messages.success(request, commands['conditional'][v]['choice_print'])
-
+            #Tu powinny być wykonane komendy (w stylu dodaj/odejmij gold itp)
             event.done = True
             event.save()
+            you.ticks += 1
+            you.save()
             return redirect('/show_event/')
     else:
         form = EventForm(commands=commands, after_form=event.after_form)
@@ -283,6 +285,7 @@ def end_adventure(request):
 @login_required
 def wait_outside(request):
     you = request.user.selected_character
+    you.ticks = 0
     prev_location = you.location
     you.location = Location.objects.get(pk=2)
     you.save()
@@ -298,9 +301,10 @@ def prepare_to_adventure(request):
     you = request.user.selected_character
     prev_location = you.location
     you.location = Location.objects.get(pk=0)
+    you.ticks = 0
     you.save()
 
-    if prev_location.id != 1 and not prev_location.character_set.all():
+    if prev_location.id != 1 and prev_location.id !=2 and not prev_location.character_set.all():
         prev_location.delete()
 
     return redirect('/')
@@ -309,8 +313,11 @@ def prepare_to_adventure(request):
 @login_required
 def trip_to(request, target_id):
     if target_id in [3,4,5]:
-        companions = Character.objects.filter(leader=request.user.selected_character)
-        prev_location = request.user.selected_character.location
+        you = request.user.selected_character
+        you.ticks = 1
+        you.save()
+        companions = Character.objects.filter(leader=you)
+        prev_location = you.location
         journey_template = LocationTemplate.objects.get(pk=target_id)
         journey = Location.objects.create(template = journey_template, name="journey to")
         journey.name="journey {}".format(journey.id)
@@ -321,32 +328,40 @@ def trip_to(request, target_id):
 
         prev_location.delete()
          
-#        channel_layer = get_channel_layer() # nie jestem pewny czy to jest potrzebne. Czy tutaj.....
+        channel_layer = get_channel_layer() # nie jestem pewny czy to jest potrzebne. Czy tutaj.....
 
-        for roll in range(1,journey.template.no_of_dices+1):
-            event_roll = "{}{}".format(roll('1D6'),roll('1D6'))
+        logger.error("zaczynamy! rzutow bedzie {}".format(journey.template.next_location.all()[0].no_of_dices))
+        for dice_roll in range(1,2*journey.template.next_location.all()[0].no_of_dices+1):
+            event_roll = "{}{}".format(Roll('1D6'),Roll('1D6'))
+            logger.error("event roll: {}".format(event_roll))
+
             event = EventTemplate.objects.get(number=event_roll,event_type__name='Hazards')
 
             add_party_event(event, you.leader)
 
-    return redirect('/')
+    return redirect('/show_event/')
 
 def look_for_shop(request, shop_id):
     you = request.user.selected_character
     if you.active_day:
         return redirect('/end_of_day/')
 
-    day = you.day_in_settlement
+    day = you.ticks
     
     shop = Shop.objects.get(pk=shop_id)
+    if you.warrior_type in shop.forbidden.all():
+
+        messages.success(request, 'nie dla psa kiełbasa')
+        return redirect('/')
+
     activity, created = SettlementActivity.objects.get_or_create(character=you, location=you.location, shop=shop, defaults={'status': ShopStatus.objects.get(pk=1), 'day': day})
 
 
-    if activity.status.id==0:
+    if activity.status.id==0 and shop.shop_type_id != 4 and shop.shop_type_id != 5: #TB:  usun 5!
         messages.success(request, 'tu już byłeś - wypad')
         return redirect('/')
     else:
-        success = roll('{}D6'.format(you.location.template.no_of_dices))>Shop.objects.get(pk=shop_id).shop_type.availability
+        success = Roll('{}D6'.format(you.location.template.no_of_dices))>Shop.objects.get(pk=shop_id).shop_type.availability
         you.active_day = True
         you.save()
         if success:
@@ -362,15 +377,21 @@ def look_for_shop(request, shop_id):
                 activity.status=ShopStatus.objects.get(pk=0)
                 activity.save()
                 return redirect('/visit_temple/')
+            if shop.shop_type_id == 6:
+                activity.status=ShopStatus.objects.get(pk=0)
+                activity.save()
+                return redirect('/visit_alchemists_laboratory/')
             else:
                 activity.status=ShopStatus.objects.get(pk=0)
                 activity.save()
                 return redirect('/visit_shop/{}/'.format(shop_id))
         else:
-            messages.success(request, 'Cały dzień stracony i nic.')
             activity.status=ShopStatus.objects.get(pk=-1)
             activity.save()
-            return redirect('/')
+            context = {
+                    'text' : 'Cały dzień stracony i nic...',
+            }
+            return render (request,'game/modal.html', context)
 
 def visit_shop(request, shop_id):
     from django.db.models.expressions import Func
@@ -406,12 +427,103 @@ def visit_shop(request, shop_id):
     return render (request,'game/visit_shop.html', context)
 
 def visit_temple(request):
+    you = request.user.selected_character
+    if request.method == 'POST':
+        if 'Exit' not in request.POST:
+            form = TempleForm(request.POST, gold=you.get_current_gold())
+            you.remove_gold(50,'Sacrifice in Temple')
+            if form.is_valid():
+                roll = Roll('1D6')
+                # TB: TRZEBA DODAC SKILLE!!!!
+                if roll == 3:
+                    text = "During any one turn in the next adventure, your Warrior's Attacks are doubled."
+                elif roll == 4:
+                    text = "Your Warrior's hand is guided by powers unseen. For any one Attack in the next adventure, he may add +3 to his to hit roll"
+                elif roll == 5:
+                    text = "Your Warrior may ignore the damage caused by any one Attack made against him in the next adventure, when the blow is mysticaly deflected at the last moment."
+                elif roll == 6:
+                    text = "Your Warrior may roll an extra 1D6 dice when rolling the damage for any one Attack in the next adventure."
+                else:
+                    text = "The gods are not listening, and your Warrior's pleas go unanswered"
+                context = {
+                    'text' : text,
+                }
+
+                return render (request,'game/modal.html', context)
+        else:
+            return redirect ('/end_of_day/')
+    else:
+         form = TempleForm(gold=you.get_current_gold())
+
+
+    context = {
+        'text' : "Between adventures, many Warriors come to the local temple to offer up prayers and sacrifice in thanks for the adventure just completed, and for aid in the next.",
+        'form' : form,
+    }
+    return render (request,'game/simple_modal_form.html', context)
+
+def visit_alchemists_laboratory(request):
+    you = request.user.selected_character
+    if request.method == 'POST':
+        form = AlchemistsForm(request.POST, character=request.user.selected_character)
+        if form.is_valid():
+            no_of_dices = form.cleaned_data['dices']
+            item = form.cleaned_data['item']
+            roll_sum = 0
+            for dice in range(1, no_of_dices+1):
+               roll = Roll('1D6')
+               if roll == 1:
+                   roll_sum = 0
+                   break
+               else:
+                  roll_sum += roll
+            if roll_sum == 0:
+                text = "The transmutation fails and the item fizzies away until nothing is left but a pile of sludge."
+            else:
+                text = "The transmutation succeeds. You earn {} gold.".format(roll_sum*25)
+                you.add_gold(roll_sum*25,'Transmutation of {} into gold'.format(item.item.name))
+            item.delete()
+            context = {
+                'text' : text,
+            }
+
+            return render (request,'game/modal.html', context)
+
+    else:
+        form = AlchemistsForm(character = request.user.selected_character)
+
+
     context = {
         'form' : form,
     }
     return render (request,'game/simple_form.html', context)
 
+
 def visit_gambling_house(request):
+    if request.method == 'POST':
+        form = GamblingForm(request.POST)
+        if form.is_valid():
+            event_roll = Roll('1D6')
+            bet = form.cleaned_data['bet'] * Roll('1D6')
+            you = request.user.selected_character
+            most_valuable_item = Equipment.objects.filter(owner=you).order_by('-item__sell_price')[0]
+            if event_roll == 1:
+                result, item = you.remove_gold_and_most_valuable_item_if_not_enough(bet,'Lost in Gambling House')
+
+                text = 'Your Warrior is stiched-up with minutes, the sharp-eyed owners taking him for all he has. Your Warrior loses {}.'.format(" all gold and {}".format(item) if item else "{} gold.".format(bet))
+            elif event_roll == 6:
+                text = "Luck is with you Warrior today, and he quickly wins {} gold.".format(bet)
+                you.add_gold(bet,'Win in Gambling House')
+
+            else:
+                text = "After a pleasurable day, he finishes evens. Still, nothing lost, nothing gained"
+            context = {
+                    'text' : text,
+            }
+            return render (request,'game/modal.html', context)
+    else:
+        form = GamblingForm()
+
     context = {
         'form' : form,
     }
@@ -419,19 +531,19 @@ def visit_gambling_house(request):
 
 def visit_alehouse(request):
     you = request.user.selected_character
-    event_roll=roll(you.warrior_type.alehouse_roll)
+    event_roll=Roll(you.warrior_type.alehouse_roll)
     
     event = EventTemplate.objects.get(number=event_roll,event_type__name='Alehouse')
     add_warrior_event(event, you)
-    return redirect('/show_event/')
+    return redirect('/end_of_day/')
 
 def end_of_day(request):
     payer = request.user.selected_character
     if payer.pay_living_expenses():
-        payer.day_in_settlement+=1
         payer.active_day = False
         payer.save()
-        event_roll = "{}{}".format(roll('1D6'),roll('1D6'))
+        event_roll = "{}{}".format(Roll('1D6'),Roll('1D6'))
+        event_roll = "25"
         event = EventTemplate.objects.get(number=event_roll,event_type__name='Settlement Events')
         add_warrior_event(event, payer)
         return redirect('/show_event/')

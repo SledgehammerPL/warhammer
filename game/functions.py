@@ -7,7 +7,7 @@ import re
 import logging
 logger = logging.getLogger('error_logger')
 
-def roll(command):
+def Roll(command):
     match = re.search(r'(\d+)D(\d+)([-+]\d+)?',command)
     no_of_dices=int(match.group(1))
     sides_of_dice=int(match.group(2))
@@ -26,12 +26,13 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
     try:
         drawn_warrior = description_context['drawn_warrior']
     except KeyError:
-        drawn_warrior = character
+        logger.error("[WE] dziwne. Nie powinno być takiej sytuacji...")
+        pass
 
-    logger.error("{}".format(tasks))
+    logger.error("[WE]tasks: {}".format(tasks))
     conditional_commands = {}
     alternative_commands = {}
-    character_1D6 = roll('1D6')
+    character_1D6 = Roll('1D6')
     try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
         description_context['each_warrior_print']=tasks["0"]["each_warrior_print"]
         description_context['each_warrior_command']+=tasks["0"]["each_warrior_command"]
@@ -46,7 +47,7 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
         pass
 
     if character == drawn_warrior:
-        drawn_character_1D6 = roll('1D6')
+        drawn_character_1D6 = "{}".format(Roll('1D6'))
         try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
             description_context['drawn_warrior_print']+=tasks["0"]["drawn_warrior_print"]
             description_context['drawn_warrior_command']+=tasks["0"]["drawn_warrior_command"]
@@ -57,10 +58,10 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
             description_context['drawn_warrior_print']+=tasks[drawn_character_1D6]["drawn_warrior_print"]
             description_context['drawn_warrior_command']+=tasks[drawn_character_1D6]["drawn_warrior_command"]
             obligatory_commands +=tasks[drawn_character_1D6]["drawn_warrior_command"].split(";")
-        except KeyError:
+        except IndexError:
             pass
     else:
-        not_drawn_character_1D6 = roll('1D6')
+        not_drawn_character_1D6 = Roll('1D6')
         try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
             description_context['not_drawn_warrior_print']+=tasks["0"]["not_drawn_warrior_print"]
             description_context['not_drawn_warrior_command']+=tasks["0"]["not_drawn_warrior_command"]
@@ -76,7 +77,7 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
             pass
     try:
         party_option=tasks["0"]["party_options"] #Na to pytanie odpowiada Lider - reszta czeka
-        if character != leader:
+        if character != character.leader:
             party_option="You have to wait for leader decision"
             obligatory_commands +="wait_for_leader_answer" #to trzeba poprawić, żeby ta komenda była pierwsza
         else:
@@ -134,6 +135,9 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
 
     except KeyError:
         pass
+
+    logger.error('DESCRIPTION CONTEXT:{}'.format(description_context))
+
     before_form = Template("{}".format(event_template.before_form)).render(Context(description_context))
     after_form = Template("{}".format(event_template.after_form)).render(Context(description_context))
     commands = {
@@ -141,21 +145,37 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
             'conditional' : conditional_commands,
             'alternative' : alternative_commands,
             }
-    return Event.objects.create(character = character, event_template = event_template, before_form = before_form, after_form = after_form, command = json.dumps(commands), leader_event = leader_event)
+    return Event.objects.create(character = character, template = event_template, before_form = before_form, after_form = after_form, command = json.dumps(commands), leader_event = leader_event)
 
 def add_warrior_event(event_template, character):
-    logger.error("commands: {}".format(event_template.command))
+    party_context = {
+        'drawn_warrior' : character,
+        'party_print' : '',
+        'party_command' : '',
+        'each_warrior_print' : '',
+        'each_warrior_command' : '',
+        'drawn_warrior_print' : '',
+        'drawn_warrior_command' : '',
+        'not_drawn_warrior_print' : '',
+        'not_drawn_warrior_command' : '',
+        'each_warrior_choice_print' : '',
+        'each_warrior_choice_command' : '',
+        'choice_question' : '',
+
+    }
+
+    logger.error("[AWE]commands: {}".format(event_template.command))
     try:
         tasks = json.loads(event_template.command)
     except json.JSONDecodeError:
-        tasks={}
-    warrior_event(character, event_template, tasks)
+        tasks={'error':'JSONDecodeError'}
+    warrior_event(character, event_template, tasks, None , party_context.copy())
 
 def add_party_event(event_template, leader): 
     
 #-----------------------------------
     drawn_warrior =  Character.objects.filter(leader=leader)[randrange(0,Character.objects.filter(leader=leader).count())]
-    party_1D6 = roll('1D6')
+    party_1D6 = Roll('1D6')
     party_context = {
         'drawn_warrior' : drawn_warrior,
         'party_print' : '',
@@ -190,7 +210,7 @@ def add_party_event(event_template, leader):
     except KeyError:
         pass
     # --- najpierw leader
-    leader_event = warrior_event(leader, tasks, None,party_context.copy(), party_obligatory_commands)
+    leader_event = warrior_event(leader, event_template, tasks, None, party_context.copy(), party_obligatory_commands)
     leader_event.leader_event = leader_event
     leader_event.save()
     # --- potem reszta

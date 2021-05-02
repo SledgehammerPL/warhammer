@@ -25,6 +25,7 @@ urlpatterns = [
   path('visit_alehouse/',views.visit_alehouse, name='visit_alehouse'),
   path('visit_temple/',views.visit_temple, name='visit_temple'),
   path('visit_gambling_house/',views.visit_gambling_house, name='visit_gambling_house'),
+  path('visit_alchemists_laboratory/',views.visit_alchemists_laboratory, name='visit_alchemists_laboratory'),
   path('buy_item', views.buy_item, name='buy_item'),
   path('sell_item', views.sell_item, name='sell_item'),
 ]
