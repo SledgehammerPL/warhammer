@@ -20,7 +20,7 @@ def Roll(command):
         result = no_of_dices
     if result>sides_of_dice*no_of_dices:
         result = sides_of_dice*no_of_dices
-    return result
+    return "".format(result)
 
 def warrior_event(character, event_template, tasks, leader_event = None, description_context = {}, obligatory_commands = []):
     try:
@@ -47,7 +47,7 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
         pass
 
     if character == drawn_warrior:
-        drawn_character_1D6 = "{}".format(Roll('1D6'))
+        drawn_character_1D6 = Roll('1D6')
         try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
             description_context['drawn_warrior_print']+=tasks["0"]["drawn_warrior_print"]
             description_context['drawn_warrior_command']+=tasks["0"]["drawn_warrior_command"]
