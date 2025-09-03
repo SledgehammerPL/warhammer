@@ -11,10 +11,17 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
+import environ
 import os
+import sys
+
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Take environment variables from .env file
+env = environ.Env()
+environ.Env.read_env(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -42,10 +49,11 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'crispy_forms',
+    'crispy_bootstrap4',
     'channels',
 
-    'game',
-    'people',
+    'apps.game',
+    'apps.people',
 ]
 
 MIDDLEWARE = [
@@ -58,7 +66,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'settings.urls'
+ROOT_URLCONF = 'core.urls'
 
 TEMPLATES = [
     {
@@ -73,14 +81,14 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
-                'game.context_processors.list_of_shops',
+                'apps.game.context_processors.list_of_shops',
             ],
         },
     },
 ]
 
-WSGI_APPLICATION = 'settings.local.wsgi.application'
-ASGI_APPLICATION = 'settings.local.asgi.application'
+WSGI_APPLICATION = 'core.wsgi.application'
+
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
@@ -94,12 +102,35 @@ CHANNEL_LAYERS = {
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'TEST_CHARSET': 'UTF8', # if your normal db is utf8
+            'NAME': ':memory:', # in memory
+            'TEST_NAME': ':memory:', # in memory
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            # Add 'postgresql_psycopg2','postgresql', 'mysql', 'sqlite3' or 'oracle'.
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            # Or path to database file if using sqlite3.
+            'NAME': env('DATABASE_NAME'),
+            # Not used with sqlite3.
+            'USER': env('DATABASE_USER'),
+            # Not used with sqlite3.
+            'PASSWORD': env('DATABASE_PASSWORD'),
+            # Set to empty string for localhost. Not used with sqlite3.
+            'HOST': env('DATABASE_HOST', default='127.0.0.1'),
+            # Set to empty string for default.
+            'PORT': env('DATABASE_PORT', default='5432'),
+            'TIME_ZONE': 'Europe/Warsaw',
+
+            # Not used with sqlite3.
+        }
+    }
 
 
 # Password validation
@@ -136,10 +167,19 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/3.1/howto/static-files/
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
 
+# https://docs.djangoproject.com/en/4.1/ref/settings/#static-root
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+
+# https://docs.djangoproject.com/en/4.1/ref/settings/#static-url
 STATIC_URL = '/static/'
-STATIC_ROOT = '/home/common/'
+
+# Extra places for collectstatic to find static files.
+# https://docs.djangoproject.com/en/4.1/ref/settings/#staticfiles-dirs
+STATICFILES_DIRS = [
+]
+
 #TB:
 AUTH_USER_MODEL = 'people.Person'
 
@@ -148,8 +188,5 @@ ADMINS = [('Tomasz', 'tomasz@brzezina.pl'),]
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 LOGIN_REDIRECT_URL = '/'
-try:
-    from .local.settings import *
-except ImportError as e:
-    pass
 
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'

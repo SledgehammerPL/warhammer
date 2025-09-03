@@ -1,10 +1,10 @@
-from django import forms
-from people.models import Person
-from .models import WarriorType, Character, JourneyTable, Equipment
+from apps.people.models import Person
 from crispy_forms.helper import FormHelper
 from crispy_forms.layout import Layout, Submit, Row, Column, Div, Field, Fieldset,HTML,Button, ButtonHolder
+from django import forms
 from django.db.models import F
 from django.utils.text import slugify
+from . import models
 import json
 import logging
 logger = logging.getLogger('error_logger')
@@ -51,7 +51,7 @@ class AlchemistsForm(forms.Form):
     def __init__(self, *args, **kwargs):
         character = kwargs.pop('character')
         super().__init__(*args, **kwargs)
-        self.fields['item'].queryset = Equipment.objects.filter(owner=character)
+        self.fields['item'].queryset = models.Equipment.objects.filter(owner=character)
 
         self.helper = FormHelper()
         self.helper.layout = Layout()
@@ -66,7 +66,7 @@ class AlchemistsForm(forms.Form):
 
 
 class JourneyDestinationForm(forms.Form):
-    destination = forms.ModelChoiceField(queryset=JourneyTable.objects.all())
+    destination = forms.ModelChoiceField(queryset=models.JourneyTable.objects.all())
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
@@ -131,7 +131,7 @@ class ChooseCharacterForm(forms.Form):
     def __init__(self, *args, **kwargs):
         user = kwargs.pop('user')
         super().__init__(*args, **kwargs)
-        self.fields['character'].queryset = Character.objects.filter(player=user)
+        self.fields['character'].queryset = models.Character.objects.filter(player=user)
         self.helper = FormHelper()
         self.helper.layout = Layout()
         self.helper.layout.append(
@@ -144,7 +144,7 @@ class ChooseCharacterForm(forms.Form):
 
 
 class PartyLeaderForm(forms.Form):
-    leader = forms.ModelChoiceField(queryset=Character.objects.filter(leader=F('pk')))
+    leader = forms.ModelChoiceField(queryset=models.Character.objects.filter(leader=F('pk')))
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
@@ -160,7 +160,7 @@ class PartyLeaderForm(forms.Form):
 
 class NewCharacterForm(forms.Form):
     name = forms.CharField(label = "Name", max_length=100, widget=forms.TextInput())
-    warrior_type = forms.ModelChoiceField(queryset=WarriorType.objects.all(), label="Warrior Type")
+    warrior_type = forms.ModelChoiceField(queryset=models.WarriorType.objects.all(), label="Warrior Type")
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.helper = FormHelper()
@@ -178,7 +178,7 @@ class NewCharacterForm(forms.Form):
 class CharacterForm(forms.ModelForm):
     """Form to use with inlineformset_factory and PartyForm."""
     class Meta:
-        model = Character
+        model = models.Character
         fields = ['name']
 
 
