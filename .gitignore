@@ -1,0 +1,57 @@
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+
+# --- Virtualenv / środowiska ---
+venv/
+env/
+ENV/
+.venv/
+.env
+*.env
+
+# --- Django ---
+*.log
+*.pot
+*.pyc
+db.sqlite3
+media/
+staticfiles/
+# jeśli używasz collectstatic do innego katalogu, dodaj go tutaj
+
+# --- Migrations (opcjonalnie, jeśli nie chcesz trzymać w repo) ---
+# */migrations/*
+# !*/migrations/__init__.py
+
+# --- Testy / coverage ---
+.coverage
+htmlcov/
+.tox/
+nosetests.xml
+coverage.xml
+*.cover
+*.py,cover
+.cache
+.pytest_cache/
+junit.xml
+
+# --- IDE / edytory ---
+.vscode/
+.idea/
+*.swp
+*~
+.project
+.settings/
+*.sublime-workspace
+*.sublime-project
+
+# --- Systemowe ---
+.DS_Store
+Thumbs.db
+
+# --- Docker ---
+*.pid
+*.seed
+*.pid.lock
+
