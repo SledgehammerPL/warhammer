@@ -60,7 +60,7 @@ def warrior_event(character, event_template, tasks, leader_event=None, descripti
             description_context['drawn_warrior_print'] += tasks[drawn_character_1D6]["drawn_warrior_print"]
             description_context['drawn_warrior_command'] += tasks[drawn_character_1D6]["drawn_warrior_command"]
             obligatory_commands += tasks[drawn_character_1D6]["drawn_warrior_command"].split(";")
-        except IndexError:
+        except KeyError:
             pass
     else:
         not_drawn_character_1D6 = str(Roll('1D6'))
