@@ -1,6 +1,4 @@
-Django
-django-crispy-forms
-psycopg2-binary
-channels-redis
-django-environ
-crispy-bootstrap4
+Django==4.2.27
+django-crispy-forms==2.4
+channels>=4.1,<5
+channels-redis>=4.2,<5

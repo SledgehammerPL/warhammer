@@ -14,15 +14,16 @@ from pathlib import Path
 import environ
 import os
 import sys
+from django.utils.translation import gettext_lazy as _
 
+env = environ.Env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-# Take environment variables from .env file
-env = environ.Env()
-environ.Env.read_env(BASE_DIR / '.env')
 
+# Take environment variables from .env file
+environ.Env.read_env(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
@@ -49,16 +50,16 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'crispy_forms',
-    'crispy_bootstrap4',
     'channels',
 
-    'apps.game',
-    'apps.people',
+    'apps.game.apps.GameConfig',
+    'apps.people.apps.PersonConfig',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -72,7 +73,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
-            os.path.join(BASE_DIR, 'templates')
+            os.path.join(BASE_DIR, 'apps', 'templates')
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -88,7 +89,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'core.wsgi.application'
-
+ASGI_APPLICATION = 'core.asgi.application'
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
@@ -100,15 +101,18 @@ CHANNEL_LAYERS = {
 
 
 # Database
-# https://docs.djangoproject.com/en/3.1/ref/settings/#databases
+# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
 if 'test' in sys.argv:
     DATABASES = {
         'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'TEST_CHARSET': 'UTF8', # if your normal db is utf8
-            'NAME': ':memory:', # in memory
-            'TEST_NAME': ':memory:', # in memory
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': 'test_' + env('DATABASE_NAME', default='gratytaty'),
+            'USER': env('DATABASE_USER', default='postgres'),
+            'PASSWORD': env('DATABASE_PASSWORD', default='postgres'),
+            'HOST': env('DATABASE_HOST', default='localhost'),
+            'PORT': env('DATABASE_PORT', default='5432'),
+            'TIME_ZONE': 'Europe/Warsaw',
         }
     }
 else:
@@ -123,15 +127,14 @@ else:
             # Not used with sqlite3.
             'PASSWORD': env('DATABASE_PASSWORD'),
             # Set to empty string for localhost. Not used with sqlite3.
-            'HOST': env('DATABASE_HOST', default='127.0.0.1'),
+            'HOST': env('DATABASE_HOST'),
             # Set to empty string for default.
-            'PORT': env('DATABASE_PORT', default='5432'),
+            'PORT': env('DATABASE_PORT'),
             'TIME_ZONE': 'Europe/Warsaw',
 
             # Not used with sqlite3.
         }
     }
-
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
@@ -155,7 +158,16 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/3.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'pl'
+
+LANGUAGES = [
+    ('pl', _('Polski')),
+    ('en', _('English')),
+]
+
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]
 
 TIME_ZONE = 'UTC'
 
@@ -167,19 +179,11 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
+# https://docs.djangoproject.com/en/3.1/howto/static-files/
 
-# https://docs.djangoproject.com/en/4.1/ref/settings/#static-root
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# https://docs.djangoproject.com/en/4.1/ref/settings/#static-url
 STATIC_URL = '/static/'
-
-# Extra places for collectstatic to find static files.
-# https://docs.djangoproject.com/en/4.1/ref/settings/#staticfiles-dirs
-STATICFILES_DIRS = [
-]
-
+STATIC_ROOT = '/home/common/'
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 #TB:
 AUTH_USER_MODEL = 'people.Person'
 
@@ -188,5 +192,82 @@ ADMINS = [('Tomasz', 'tomasz@brzezina.pl'),]
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 LOGIN_REDIRECT_URL = '/'
+try:
+    from .local.settings import *
+except ImportError as e:
+    pass
+
+LOGGING = {
+    'version': 1,
+
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{asctime} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'debug_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'log/debug.log',
+            'formatter': 'verbose'
+        },
+        'error_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'log/error.log',
+            'formatter': 'verbose'
+        },
+        'sql_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'log/sql.log',
+            'formatter': 'simple'
+        }
+    },
+    'loggers': {
+
+        'django.db.backends': {
+            'handlers': ['sql_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['debug_file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'error_logger': {
+            'handlers': ['error_file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'core': {  # Łapie wszystko co zaczyna się od "apps."
+           'handlers': ['debug_file', 'console'],  # Dodaj 'console' żeby widzieć w terminalu
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'apps': {  # Łapie wszystko co zaczyna się od "apps."
+            'handlers': ['debug_file', 'console'],  # Dodaj 'console' żeby widzieć w terminalu
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+

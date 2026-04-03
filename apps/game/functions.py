@@ -1,13 +1,11 @@
-from django.contrib import messages
-from django.template import Template, Context
+from .models import Character, Event
 from random import randint, randrange
-from . import models
+from django.template import Template, Context
+from django.contrib import messages
 import json
 import re
 import logging
-import unicodedata
 logger = logging.getLogger('error_logger')
-
 
 def Roll(command):
     match = re.search(r'(\d+)D(\d+)([-+]\d+)?',command)
@@ -22,7 +20,7 @@ def Roll(command):
         result = no_of_dices
     if result>sides_of_dice*no_of_dices:
         result = sides_of_dice*no_of_dices
-    return f"{result}"
+    return "".format(result)
 
 def warrior_event(character, event_template, tasks, leader_event = None, description_context = {}, obligatory_commands = []):
     try:
@@ -37,60 +35,55 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
     character_1D6 = Roll('1D6')
     try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
         description_context['each_warrior_print']=tasks["0"]["each_warrior_print"]
-        description_context['each_warrior_command'] += tasks["0"]["each_warrior_command"]
-        obligatory_commands  += tasks["0"]["each_warrior_command"].split(";")
+        description_context['each_warrior_command']+=tasks["0"]["each_warrior_command"]
+        obligatory_commands +=tasks["0"]["each_warrior_command"].split(";")
     except KeyError:
         pass
     try: # polecenia dla każdego po losowaniu wstępnym
-        description_context['each_warrior_print'] += tasks[character_1D6]["each_warrior_print"]
-        description_context['each_warrior_command'] += tasks[character_1D6]["each_warrior_command"]
-        obligatory_commands  += tasks[character_1D6]["each_warrior_command"].split(";")
+        description_context['each_warrior_print']+=tasks[character_1D6]["each_warrior_print"]
+        description_context['each_warrior_command']+=tasks[character_1D6]["each_warrior_command"]
+        obligatory_commands +=tasks[character_1D6]["each_warrior_command"].split(";")
     except KeyError:
         pass
 
     if character == drawn_warrior:
         drawn_character_1D6 = Roll('1D6')
-        if "0" in tasks:
-            try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
-                description_context['drawn_warrior_print'] += tasks["0"]["drawn_warrior_print"]
-                description_context['drawn_warrior_command'] += tasks["0"]["drawn_warrior_command"]
-                obligatory_commands  += tasks["0"]["drawn_warrior_command"].split(";")
-            except KeyError:
-                pass
-        if drawn_character_1D6 in tasks:
-            try: # polecenia dla każdego po losowaniu wstępnym
-                description_context['drawn_warrior_print'] += tasks[drawn_character_1D6]["drawn_warrior_print"]
-                description_context['drawn_warrior_command'] += tasks[drawn_character_1D6]["drawn_warrior_command"]
-                obligatory_commands  += tasks[drawn_character_1D6]["drawn_warrior_command"].split(";")
-            except IndexError:
-                pass
+        try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
+            description_context['drawn_warrior_print']+=tasks["0"]["drawn_warrior_print"]
+            description_context['drawn_warrior_command']+=tasks["0"]["drawn_warrior_command"]
+            obligatory_commands +=tasks["0"]["drawn_warrior_command"].split(";")
+        except KeyError:
+            pass
+        try: # polecenia dla każdego po losowaniu wstępnym
+            description_context['drawn_warrior_print']+=tasks[drawn_character_1D6]["drawn_warrior_print"]
+            description_context['drawn_warrior_command']+=tasks[drawn_character_1D6]["drawn_warrior_command"]
+            obligatory_commands +=tasks[drawn_character_1D6]["drawn_warrior_command"].split(";")
+        except IndexError:
+            pass
     else:
         not_drawn_character_1D6 = Roll('1D6')
-        if "0" in tasks:
-            try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
-                description_context['not_drawn_warrior_print'] += tasks["0"]["not_drawn_warrior_print"]
-                description_context['not_drawn_warrior_command'] += tasks["0"]["not_drawn_warrior_command"]
-                obligatory_commands  += tasks["0"]["not_drawn_warrior_command"].split(";")
-            except KeyError:
-                pass
-        if not_drawn_character_1D6 in tasks:
-            try: # polecenia dla każdego po losowaniu wstępnym
-                description_context['not_drawn_warrior_print'] += tasks[not_drawn_character_1D6]["not_drawn_warrior_print"]
-                description_context['not_drawn_warrior_command'] += tasks[not_drawn_character_1D6]["not_drawn_warrior_command"]
+        try: # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
+            description_context['not_drawn_warrior_print']+=tasks["0"]["not_drawn_warrior_print"]
+            description_context['not_drawn_warrior_command']+=tasks["0"]["not_drawn_warrior_command"]
+            obligatory_commands +=tasks["0"]["not_drawn_warrior_command"].split(";")
+        except KeyError:
+            pass
+        try: # polecenia dla każdego po losowaniu wstępnym
+            description_context['not_drawn_warrior_print']+=tasks[not_drawn_character_1D6]["not_drawn_warrior_print"]
+            description_context['not_drawn_warrior_command']+=tasks[not_drawn_character_1D6]["not_drawn_warrior_command"]
 
-                obligatory_commands  += tasks[not_drawn_character_1D6]["not_drawn_warrior_command"].split(";")
-            except KeyError:
-                pass
+            obligatory_commands +=tasks[not_drawn_character_1D6]["not_drawn_warrior_command"].split(";")
+        except KeyError:
+            pass
     try:
-        if "0" in tasks:
-            party_option = tasks["0"]["party_options"] #Na to pytanie odpowiada Lider - reszta czeka
-            if character != character.leader:
-                party_option = "You have to wait for leader decision"
-                obligatory_commands  += "wait_for_leader_answer" #to trzeba poprawić, żeby ta komenda była pierwsza
-            else:
-                alternative_commands['party_option'] = {}
-                for party_option, command in party_option.items():
-                    alternative_commands['party_option'][party_option]= {'description' : command['description'],'option_command' :command['option_command'].split(";") if 'option_command' in command else []}
+        party_option=tasks["0"]["party_options"] #Na to pytanie odpowiada Lider - reszta czeka
+        if character != character.leader:
+            party_option="You have to wait for leader decision"
+            obligatory_commands +="wait_for_leader_answer" #to trzeba poprawić, żeby ta komenda była pierwsza
+        else:
+            alternative_commands['party_option']={}
+            for party_option, command in party_option.items():
+                alternative_commands['party_option'][party_option]= {'description' : command['description'],'option_command' :command['option_command'].split(";") if 'option_command' in command else []}
     except KeyError:
         pass
     try:
@@ -99,17 +92,17 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
             alternative_commands[each_warrior_option]={'choice_print' :'','choice_command' :[], 'description' : command['description'] if 'description' in command else ""}
 
             if "choice_command" in command["0"]:
-                description_context['each_warrior_choice_command'] += command["0"]["choice_command"]
-                alternative_commands[each_warrior_option]['choice_command'] += command["0"]["choice_command"].split(";")
+                description_context['each_warrior_choice_command']+=command["0"]["choice_command"]
+                alternative_commands[each_warrior_option]['choice_command']+=command["0"]["choice_command"].split(";")
 
             if "choice_print" in command["0"]:
-                alternative_commands[each_warrior_option]['choice_print'] += command["0"]["choice_print"]
+                alternative_commands[each_warrior_option]['choice_print']+=command["0"]["choice_print"]
 
             choice_character_1D6 = str(randint(1,6))
             if "choice_command" in command[choice_character_1D6]:
-                alternative_commands[each_warrior_option]['choice_command'] += command[choice_character_1D6]["choice_command"].split(";")
+                alternative_commands[each_warrior_option]['choice_command']+=command[choice_character_1D6]["choice_command"].split(";")
             if "choice_print" in command[choice_character_1D6]:
-                alternative_commands[each_warrior_option]['choice_print'] += ' '+command[choice_character_1D6]["choice_print"]
+                alternative_commands[each_warrior_option]['choice_print']+=' '+command[choice_character_1D6]["choice_print"]
 
     except KeyError:
         pass
@@ -119,7 +112,7 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
         party_question=tasks["0"]["party_questions"] #Na to pytanie odpowiada Lider - reszta czeka
         if character != leader:
             party_question="You have to wait for leader decision"
-            obligatory_commands  += "wait_for_leader_answer" #to trzeba poprawić, żeby ta komenda była pierwsza
+            obligatory_commands +="wait_for_leader_answer" #to trzeba poprawić, żeby ta komenda była pierwsza
     except KeyError:
         pass
     try:
@@ -128,17 +121,17 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
             conditional_commands[each_warrior_question]={'choice_print' :'','choice_command' :[],'limit' : command["limit"] if "limit" in command else "1", 'description' : command['description'] if 'description' in command else ""}
 
             if "choice_command" in command["0"]:
-                description_context['each_warrior_choice_command'] += command["0"]["choice_command"]
-                conditional_commands[each_warrior_question]['choice_command'] += command["0"]["choice_command"].split(";")
+                description_context['each_warrior_choice_command']+=command["0"]["choice_command"]
+                conditional_commands[each_warrior_question]['choice_command']+=command["0"]["choice_command"].split(";")
 
             if "choice_print" in command["0"]:
-                conditional_commands[each_warrior_question]['choice_print'] += command["0"]["choice_print"]
+                conditional_commands[each_warrior_question]['choice_print']+=command["0"]["choice_print"]
 
             choice_character_1D6 = str(randint(1,6))
             if "choice_command" in command[choice_character_1D6]:
-                conditional_commands[each_warrior_question]['choice_command'] += command[choice_character_1D6]["choice_command"].split(";")
+                conditional_commands[each_warrior_question]['choice_command']+=command[choice_character_1D6]["choice_command"].split(";")
             if "choice_print" in command[choice_character_1D6]:
-                conditional_commands[each_warrior_question]['choice_print'] += ' '+command[choice_character_1D6]["choice_print"]
+                conditional_commands[each_warrior_question]['choice_print']+=' '+command[choice_character_1D6]["choice_print"]
 
     except KeyError:
         pass
@@ -152,7 +145,7 @@ def warrior_event(character, event_template, tasks, leader_event = None, descrip
             'conditional' : conditional_commands,
             'alternative' : alternative_commands,
             }
-    return models.Event.objects.create(character = character, template = event_template, before_form = before_form, after_form = after_form, command = json.dumps(commands), leader_event = leader_event)
+    return Event.objects.create(character = character, template = event_template, before_form = before_form, after_form = after_form, command = json.dumps(commands), leader_event = leader_event)
 
 def add_warrior_event(event_template, character):
     party_context = {
@@ -179,8 +172,9 @@ def add_warrior_event(event_template, character):
     warrior_event(character, event_template, tasks, None , party_context.copy())
 
 def add_party_event(event_template, leader): 
-    #-----------------------------------
-    drawn_warrior =  models.Character.objects.filter(leader=leader)[randrange(0, models.Character.objects.filter(leader=leader).count())]
+    
+#-----------------------------------
+    drawn_warrior =  Character.objects.filter(leader=leader)[randrange(0,Character.objects.filter(leader=leader).count())]
     party_1D6 = Roll('1D6')
     party_context = {
         'drawn_warrior' : drawn_warrior,
@@ -197,7 +191,6 @@ def add_party_event(event_template, leader):
         'choice_question' : '',
 
     }
-
     party_obligatory_commands = []
     try:
         tasks = json.loads(event_template.command)
@@ -206,14 +199,14 @@ def add_party_event(event_template, leader):
 
     try: # wydruk i polecenia dla wszystkich bez losowania np. kazdy traci 20szt złota
         party_context['party_print']=tasks["0"]["party_print"]
-        party_context['party_command'] += tasks["0"]["party_command"]
-        party_obligatory_commands  +=  tasks["0"]["party_command"].split(";")
+        party_context['party_command']+=tasks["0"]["party_command"]
+        party_obligatory_commands += tasks["0"]["party_command"].split(";")
     except KeyError:
         pass
     try: #wydruk i polecenia po losowaniu - dla wszystkich - jesli wypadnie 1 to kazdy traci 20szt złota.
-        party_context['party_print'] += tasks[party_1D6]["party_print"]
-        party_context['party_command'] += tasks[party_1D6]["party_command"]
-        party_obligatory_commands  +=  tasks[party_1D6]["party_command"]
+        party_context['party_print']+=tasks[party_1D6]["party_print"]
+        party_context['party_command']+=tasks[party_1D6]["party_command"]
+        party_obligatory_commands += tasks[party_1D6]["party_command"]
     except KeyError:
         pass
     # --- najpierw leader
@@ -221,14 +214,8 @@ def add_party_event(event_template, leader):
     leader_event.leader_event = leader_event
     leader_event.save()
     # --- potem reszta
-    for character in models.Character.objects.filter(leader=leader).exclude(pk=leader.pk):
+    for character in Character.objects.filter(leader=leader).exclude(pk=leader.pk):
         warrior_event(character, event_template, tasks, leader_event , party_context.copy(), party_obligatory_commands)
     #        messages.info(request, 'added event {} to {}'.format(event.title, character))
 
 
-def to_valid_ascii_token(s) -> str:
-    s = "" if s is None else str(s)
-    s = unicodedata.normalize("NFKD", s).encode("ascii", "ignore").decode("ascii")
-    s = re.sub(r"[^A-Za-z0-9._-]+", "_", s)     # tylko ASCII: litery/cyfry, -, _, .
-    s = s.strip("._-")                           # bez prowadzących/końcowych znaków
-    return (s or "unnamed")[:99]

@@ -1,3 +1,4 @@
+{% load i18n %}
 <nav class="navbar navbar-expand-md navbar-dark bg-dark">
   <a style="text-align:center" class="navbar-brand" href="/characters/{{ request.user.selected_character.id }}">{{ user.selected_character.name }}<div style="font-size:10px">({{ user.selected_character.leader.name }}'s Party)</div><div style="font-size:10px">{{ user.selected_character.location.name }}</div>{% if user.selected_character.ticks != 0 %}
     <div style="font-size:10px">{{ user.selected_character.location.template.name_of_period }} {{ user.selected_character.ticks }}</div>{% endif %}</a>
@@ -13,11 +14,11 @@
             <a class="nav-link" href="/about/">O nas</a>
             </li -->
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Postać</a>
+              <a class="nav-link dropdown-toggle" href="#" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{% trans "Character" %}</a>
               <div class="dropdown-menu" aria-labelledby="dropdown04">
                 {% if user.selected_character.location.template.id != 1 %}
-                  <a class="dropdown-item" href="/choose_leader/">Dołącz do drużyny</a>
-                  <a class="dropdown-item" href="/make_own_party/">Wystąp z drużyny</a>
+                  <a class="dropdown-item" href="/choose_leader/">{% trans "Join the party" %}</a>
+                  <a class="dropdown-item" href="/make_own_party/">{% trans "Leave the party" %}</a>
                   {% if user.selected_character.location.template.is_settlement or user.selected_character.location.id == 1 %}
                     {% for next_location in user.selected_character.location.template.next_location.all %}
                     <a class="dropdown-item" href="{{ next_location.next_location_url }}">{{ next_location.next_location_desc }}</a>
@@ -25,16 +26,16 @@
 
                   {% endif %}
                 {% else %}
-                  <a class="dropdown-item" href="/break_adventure/">Przerwij przygodę</a>
+                  <a class="dropdown-item" href="/break_adventure/">{% trans "End adventure" %}</a>
 
                 {% endif %}
-                <a class="dropdown-item" href="/show_event/">Wydarzenia</a>
+                <a class="dropdown-item" href="/show_event/">{% trans "Events" %}</a>
                 <!--a class="dropdown-item" href="/privacy/">Polityka prywatności</a -->
               </div>
             </li>
             {% if user.selected_character.location.template.is_settlement %}
             <li class="nav-item dropdown">
-              <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Miejsca</a>
+              <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{% trans "Places" %}</a>
               <div class="dropdown-menu" aria-labelledby="dropdown04">
                 {% for shop in list_of_shops %}
 
@@ -45,7 +46,7 @@
             {% else %}
               {% if user.selected_character.leader == user.selected_character %}
               <li class="nav-item dropdown">
-                <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">Drużyna</a>
+                <a class="nav-link dropdown-toggle" href="#" id="dropdown04" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{% trans "Party" %}</a>
                 <div class="dropdown-menu" aria-labelledby="dropdown04">
                   {% for next_location in user.selected_character.location.template.next_location.all %}
                   <a class="dropdown-item" href="{{ next_location.next_location_url }}">{{ next_location.next_location_desc }}</a>
@@ -81,17 +82,30 @@
        </ul>
        {% endif %}
        <ul class="navbar-nav ml-auto">
+          <li class="nav-item mr-2 d-flex align-items-center">
+            <form action="{% url 'set_language' %}" method="post" class="form-inline">
+              {% csrf_token %}
+              <input name="next" type="hidden" value="{{ request.get_full_path }}">
+              <select name="language" class="form-control form-control-sm" onchange="this.form.submit()">
+                {% get_current_language as CURRENT_LANGUAGE %}
+                {% get_available_languages as LANGUAGES %}
+                {% for lang_code, lang_name in LANGUAGES %}
+                  <option value="{{ lang_code }}" {% if lang_code == CURRENT_LANGUAGE %}selected{% endif %}>{{ lang_name }}</option>
+                {% endfor %}
+              </select>
+            </form>
+          </li>
           <li class="nav-item dropdown">
             <a class="nav-link dropdown-toggle" href="#" id="dropdown01" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">{{ user }}</a>
             <div class="dropdown-menu dropdown-menu-right" aria-labelledby="dropdown04">
               {% if user.is_authenticated %}
-              <a class="dropdown-item" href="/characters/">Lista postaci</a>
-              <a class="dropdown-item" href="/choose_character/">Wybierz postać</a>
-              <a class="dropdown-item" href="/create_character/">Utwórz nową postać</a>
-              <a class="dropdown-item" href="/accounts/profile/">Profil</a>
-              <a class="dropdown-item" href="/accounts/logout/">Logout</a>
+              <a class="dropdown-item" href="/characters/">{% trans "Character list" %}</a>
+              <a class="dropdown-item" href="/choose_character/">{% trans "Choose character" %}</a>
+              <a class="dropdown-item" href="/create_character/">{% trans "Create new character" %}</a>
+              <a class="dropdown-item" href="/accounts/profile/">{% trans "Profile" %}</a>
+              <a class="dropdown-item" href="/accounts/logout/">{% trans "Logout" %}</a>
               {% else %}
-              <a class="dropdown-item" href="/accounts/login/">Login</a>
+              <a class="dropdown-item" href="/accounts/login/">{% trans "Login" %}</a>
               {% endif %}
             </div>
           </li>

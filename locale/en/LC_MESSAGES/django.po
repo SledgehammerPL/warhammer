@@ -1,0 +1,50 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: warhammer\n"
+"POT-Creation-Date: 2026-04-03 00:00+0000\n"
+"PO-Revision-Date: 2026-04-03 00:00+0000\n"
+"Last-Translator:\n"
+"Language-Team:\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+
+msgid "Character"
+msgstr "Character"
+
+msgid "Join the party"
+msgstr "Join the party"
+
+msgid "Leave the party"
+msgstr "Leave the party"
+
+msgid "End adventure"
+msgstr "End adventure"
+
+msgid "Events"
+msgstr "Events"
+
+msgid "Places"
+msgstr "Places"
+
+msgid "Party"
+msgstr "Party"
+
+msgid "Character list"
+msgstr "Character list"
+
+msgid "Choose character"
+msgstr "Choose character"
+
+msgid "Create new character"
+msgstr "Create new character"
+
+msgid "Profile"
+msgstr "Profile"
+
+msgid "Logout"
+msgstr "Logout"
+
+msgid "Login"
+msgstr "Login"
