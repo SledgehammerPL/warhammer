@@ -11,12 +11,19 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
+import environ
 import os
+import sys
 from django.utils.translation import gettext_lazy as _
+
+env = environ.Env()
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+
+# Take environment variables from .env file
+environ.Env.read_env(BASE_DIR / '.env')
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
@@ -98,15 +105,40 @@ CHANNEL_LAYERS = {
 
 
 # Database
-# https://docs.djangoproject.com/en/3.1/ref/settings/#databases
+# https://docs.djangoproject.com/en/5.0/ref/settings/#databases
 
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            'NAME': 'test_' + env('DATABASE_NAME', default='gratytaty'),
+            'USER': env('DATABASE_USER', default='postgres'),
+            'PASSWORD': env('DATABASE_PASSWORD', default='postgres'),
+            'HOST': env('DATABASE_HOST', default='localhost'),
+            'PORT': env('DATABASE_PORT', default='5432'),
+            'TIME_ZONE': 'Europe/Warsaw',
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            # Add 'postgresql_psycopg2','postgresql', 'mysql', 'sqlite3' or 'oracle'.
+            'ENGINE': 'django.db.backends.postgresql_psycopg2',
+            # Or path to database file if using sqlite3.
+            'NAME': env('DATABASE_NAME'),
+            # Not used with sqlite3.
+            'USER': env('DATABASE_USER'),
+            # Not used with sqlite3.
+            'PASSWORD': env('DATABASE_PASSWORD'),
+            # Set to empty string for localhost. Not used with sqlite3.
+            'HOST': env('DATABASE_HOST'),
+            # Set to empty string for default.
+            'PORT': env('DATABASE_PORT'),
+            'TIME_ZONE': 'Europe/Warsaw',
 
+            # Not used with sqlite3.
+        }
+    }
 
 # Password validation
 # https://docs.djangoproject.com/en/3.1/ref/settings/#auth-password-validators
@@ -168,4 +200,78 @@ try:
     from .local.settings import *
 except ImportError as e:
     pass
+
+LOGGING = {
+    'version': 1,
+
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{asctime} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'level': 'DEBUG',
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+        'debug_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'log/debug.log',
+            'formatter': 'verbose'
+        },
+        'error_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'log/error.log',
+            'formatter': 'verbose'
+        },
+        'sql_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': BASE_DIR / 'log/sql.log',
+            'formatter': 'simple'
+        }
+    },
+    'loggers': {
+
+        'django.db.backends': {
+            'handlers': ['sql_file'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+        'django': {
+            'handlers': ['debug_file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'error_logger': {
+            'handlers': ['error_file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'core': {  # Łapie wszystko co zaczyna się od "apps."
+           'handlers': ['debug_file', 'console'],  # Dodaj 'console' żeby widzieć w terminalu
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+        'apps': {  # Łapie wszystko co zaczyna się od "apps."
+            'handlers': ['debug_file', 'console'],  # Dodaj 'console' żeby widzieć w terminalu
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
