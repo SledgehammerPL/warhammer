@@ -332,7 +332,7 @@ def trip_to(request, target_id):
 
         logger.error("zaczynamy! rzutow bedzie {}".format(journey.template.next_location.all()[0].no_of_dices))
         for dice_roll in range(1,2*journey.template.next_location.all()[0].no_of_dices+1):
-            event_roll = "{}{}".format(Roll('1D6'),Roll('1D6'))
+            event_roll = int("{}{}".format(Roll('1D6'), Roll('1D6')))
             logger.error("event roll: {}".format(event_roll))
 
             event = EventTemplate.objects.get(number=event_roll,event_type__name='Hazards')
@@ -542,8 +542,8 @@ def end_of_day(request):
     if payer.pay_living_expenses():
         payer.active_day = False
         payer.save()
-        event_roll = "{}{}".format(Roll('1D6'),Roll('1D6'))
-        event_roll = "25"
+        event_roll = int("{}{}".format(Roll('1D6'), Roll('1D6')))
+        event_roll = 25
         event = EventTemplate.objects.get(number=event_roll,event_type__name='Settlement Events')
         add_warrior_event(event, payer)
         return redirect('/show_event/')

@@ -195,7 +195,7 @@ STATICFILES_DIRS = [
 
 
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
-#TB:
+# TB:
 AUTH_USER_MODEL = 'people.Person'
 
 ADMINS = [('Tomasz', 'tomasz@brzezina.pl'),]
@@ -204,10 +204,6 @@ CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 LOGIN_REDIRECT_URL = '/'
-try:
-    from .local.settings import *
-except ImportError as e:
-    pass
 
 LOGGING = {
     'version': 1,
@@ -266,7 +262,7 @@ LOGGING = {
             'propagate': True,
         },
         'core': {  # Łapie wszystko co zaczyna się od "apps."
-           'handlers': ['debug_file', 'console'],  # Dodaj 'console' żeby widzieć w terminalu
+            'handlers': ['debug_file', 'console'],  # Dodaj 'console' żeby widzieć w terminalu
             'level': 'DEBUG',
             'propagate': True,
         },
@@ -282,4 +278,3 @@ LOGGING = {
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-
