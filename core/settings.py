@@ -54,6 +54,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'crispy_forms',
+    'crispy_bootstrap4',
     'channels',
 
     'apps.game.apps.GameConfig',
@@ -193,6 +194,7 @@ AUTH_USER_MODEL = 'people.Person'
 
 ADMINS = [('Tomasz', 'tomasz@brzezina.pl'),]
 
+CRISPY_ALLOWED_TEMPLATE_PACKS = "bootstrap4"
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 LOGIN_REDIRECT_URL = '/'
