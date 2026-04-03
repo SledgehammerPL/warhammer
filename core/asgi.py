@@ -20,7 +20,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings')
 
 django_asgi_app = get_asgi_application()
 
-from apps.messages.routing import websocket_urlpatterns  # noqa
+from apps.game.routing import websocket_urlpatterns  # noqa
 
 application = ProtocolTypeRouter({
     'http': django_asgi_app,
