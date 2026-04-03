@@ -32,6 +32,10 @@ ALLOWED_HOSTS = [
         'warhammer.devel.b6a.pl',
         ]
 
+CSRF_TRUSTED_ORIGINS = [
+    'https://warhammer.devel.b6a.pl',
+    ]
+
 
 # Application definition
 
