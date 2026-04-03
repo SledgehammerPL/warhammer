@@ -3,7 +3,7 @@ from django.db.models.signals import post_save
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.db.models import Sum
-from .functions import to_valid_ascii_token
+
 import logging
 logger = logging.getLogger('error_logger')
 
@@ -259,7 +259,7 @@ class Event(models.Model):
 def create_event_trigger(sender, instance, *args, **kwargs):
     logger.error('event of {}'.format(instance.character))
     if Event.objects.filter(character=instance.character,done=False).count() == 1:
-        async_to_sync(channel_layer.group_send)(f"chat_{to_valid_ascii_token(instance.character.leader.name)}",  {"type": "redirect", "redirect": "/show_event/"})
+        async_to_sync(channel_layer.group_send)("chat_{}".format(instance.character.leader.name),  {"type": "redirect", "redirect": "/show_event/"})
 
 post_save.connect(create_event_trigger, sender=Event)
 

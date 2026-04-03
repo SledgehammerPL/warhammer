@@ -1,19 +1,19 @@
-from asgiref.sync import async_to_sync
-from channels.layers import get_channel_layer
+from django.shortcuts import render, redirect
+from django.http import HttpResponse, JsonResponse
 from django.core.exceptions import ObjectDoesNotExist
-from django.contrib import messages
+from .forms import * 
+from .models import * 
+from random import randint
 from django.contrib.auth.decorators import login_required
 from django.db.models import Max, Sum, F, Q,  ExpressionWrapper, BooleanField, Exists, OuterRef
 from django.db.models.functions import Round
-from django.http import HttpResponse, JsonResponse
-from django.shortcuts import render, redirect
+from django.contrib import messages
+from channels.layers import get_channel_layer
+from asgiref.sync import async_to_sync
 from django.template import Template, Context
-from django.views.decorators.csrf import csrf_protect
-from random import randint
 from .functions import add_party_event, add_warrior_event, Roll
-from . import forms, models 
+from django.views.decorators.csrf import csrf_protect
 
-import json
 import logging
 logger = logging.getLogger('error_logger')
 
@@ -30,44 +30,44 @@ def index(request):
 @login_required
 def create_character(request):
     if request.method == 'POST':
-        form = forms.NewCharacterForm(request.POST)
+        form = NewCharacterForm(request.POST)
         if form.is_valid():
             try:
-                warrior = models.Character.objects.get(name=form.cleaned_data['name'])
+                warrior = Character.objects.get(name=form.cleaned_data['name'])
 #                form.invalid()
             except ObjectDoesNotExist:
                 warrior_type = form.cleaned_data['warrior_type']
-                template = models.WarriorLevelTemplate.objects.filter(level=1,warrior_type=warrior_type)[0]
+                template = WarriorLevelTemplate.objects.filter(level=1,warrior_type=warrior_type)[0]
                 starting_wounds =  sum(randint(1,6) for i in range(template.wounds_dice))+template.wounds_modifier
                 try:
-                    warrior = models.Character.objects.create(name= form.cleaned_data['name'],player=request.user,warrior_type=warrior_type, battle_level=1,starting_wounds = starting_wounds)
+                    warrior = Character.objects.create(name= form.cleaned_data['name'],player=request.user,warrior_type=warrior_type, battle_level=1,starting_wounds = starting_wounds)
                     warrior.leader = warrior
                     warrior.save()
-                    weapon_skill = models.CharacterParameter.objects.create(value=template.weapon_skill,parameter=models.Parameter.objects.get(short_name='WS'), character = warrior, description = 'initial value of weapon skill')
-                    ballistic_skill = models.CharacterParameter.objects.create(value=template.ballistic_skill,parameter=models.Parameter.objects.get(short_name='BS'), character = warrior, description = 'initial value of ballistic skill')
-                    strength = models.CharacterParameter.objects.create(value=template.strength,parameter=models.Parameter.objects.get(short_name='S'), character = warrior, description = 'initial value of strength')
-                    toughness = models.CharacterParameter.objects.create(value=template.toughness,parameter=models.Parameter.objects.get(short_name='T'), character = warrior, description = 'initial value of toughness')
-                    wounds = models.CharacterParameter.objects.create(value=starting_wounds,parameter=models.Parameter.objects.get(short_name='W'), character = warrior, description = 'initial value of wounds')
-                    initiative = models.CharacterParameter.objects.create(value=template.initiative,parameter=models.Parameter.objects.get(short_name='I'), character = warrior, description = 'initial value of initiative')
-                    attacks = models.CharacterParameter.objects.create(value=template.attacks,parameter=models.Parameter.objects.get(short_name='A'), character = warrior, description = 'initial value of attacks')
-                    luck = models.CharacterParameter.objects.create(value=template.luck,parameter=models.Parameter.objects.get(short_name='L'), character = warrior, description = 'initial value of luck')
-                    willpower = models.CharacterParameter.objects.create(value=template.willpower,parameter=models.Parameter.objects.get(short_name='WP'), character = warrior, description = 'initial value of willpower')
-                    pinning = models.CharacterParameter.objects.create(value=template.pinning,parameter=models.Parameter.objects.get(short_name='EP'), character = warrior, description = 'initial value of escape pinning')
-                    damage_dice = models.CharacterParameter.objects.create(value=template.damage_dice,parameter=models.Parameter.objects.get(short_name='DD'), character = warrior, description = 'initial value of damage dice')
-                    skills = models.CharacterParameter.objects.create(value=template.skills,parameter=models.Parameter.objects.get(short_name='SK'), character = warrior, description = 'initial value of skills')
-                    move = models.CharacterParameter.objects.create(value=template.move,parameter=models.Parameter.objects.get(short_name='M'), character = warrior, description = 'initial value of move')
-                    request.user.selected_character = warrior
+                    weapon_skill = CharacterParameter.objects.create(value=template.weapon_skill,parameter=Parameter.objects.get(short_name='WS'), character = warrior, description = 'initial value of weapon skill')
+                    ballistic_skill = CharacterParameter.objects.create(value=template.ballistic_skill,parameter=Parameter.objects.get(short_name='BS'), character = warrior, description = 'initial value of ballistic skill')
+                    strength = CharacterParameter.objects.create(value=template.strength,parameter=Parameter.objects.get(short_name='S'), character = warrior, description = 'initial value of strength')
+                    toughness = CharacterParameter.objects.create(value=template.toughness,parameter=Parameter.objects.get(short_name='T'), character = warrior, description = 'initial value of toughness')
+                    wounds = CharacterParameter.objects.create(value=starting_wounds,parameter=Parameter.objects.get(short_name='W'), character = warrior, description = 'initial value of wounds')
+                    initiative = CharacterParameter.objects.create(value=template.initiative,parameter=Parameter.objects.get(short_name='I'), character = warrior, description = 'initial value of initiative')
+                    attacks = CharacterParameter.objects.create(value=template.attacks,parameter=Parameter.objects.get(short_name='A'), character = warrior, description = 'initial value of attacks')
+                    luck = CharacterParameter.objects.create(value=template.luck,parameter=Parameter.objects.get(short_name='L'), character = warrior, description = 'initial value of luck')
+                    willpower = CharacterParameter.objects.create(value=template.willpower,parameter=Parameter.objects.get(short_name='WP'), character = warrior, description = 'initial value of willpower')
+                    pinning = CharacterParameter.objects.create(value=template.pinning,parameter=Parameter.objects.get(short_name='EP'), character = warrior, description = 'initial value of escape pinning')
+                    damage_dice = CharacterParameter.objects.create(value=template.damage_dice,parameter=Parameter.objects.get(short_name='DD'), character = warrior, description = 'initial value of damage dice')
+                    skills = CharacterParameter.objects.create(value=template.skills,parameter=Parameter.objects.get(short_name='SK'), character = warrior, description = 'initial value of skills')
+                    move = CharacterParameter.objects.create(value=template.move,parameter=Parameter.objects.get(short_name='M'), character = warrior, description = 'initial value of move')
+                    request.user.selected_character=warrior
                     request.user.save()
-                    #request.session['character_id'] = warrior.id
-                    #request.session['character_name'] = warrior.name
-                    #request.session['leader'] = True
-                    #request.session['leader_name'] = warrior.name
-                    form = forms.NewCharacterForm()
+                    #request.session['character_id']=warrior.id
+                    #request.session['character_name']=warrior.name
+                    #request.session['leader']=True
+                    #request.session['leader_name']=warrior.name
+                    form = NewCharacterForm()
                     messages.success(request, 'New Character created.')
                 except IndexError:
                     pass
     else:
-        form = forms.NewCharacterForm()
+        form = NewCharacterForm()
     context = {
         'form': form
     }
@@ -77,14 +77,14 @@ def create_character(request):
 def character_list(request):
     characters = Character.objects.filter(player=request.user)
     context = {
-        'characters': characters,
+        'characters' : characters,
     }
     return render (request,'game/character_list.html', context)
 
 @login_required
 def show_event(request):
     you = request.user.selected_character
-    event = models.Event.objects.filter(character=you, done =False).order_by('created').first()
+    event = Event.objects.filter(character=you, done =False).order_by('created').first()
    
     if event is None:
         messages.success(request, 'End of events.')
@@ -97,7 +97,7 @@ def show_event(request):
                 you.location=you.location.next_location
             else:
                 messages.success(request, 'Robimy nowe settlement.')
-                new_settlement = forms.Location.objects.create(template=you.location.template.next_location.all()[0], name="settlement")
+                new_settlement = Location.objects.create(template=you.location.template.next_location.all()[0], name="settlement")
                 new_settlement.name = "{} {}".format(new_settlement.template.name,new_settlement.id)
                 new_settlement.save()
 
@@ -120,7 +120,7 @@ def show_event(request):
 
     logger.error("[SE]commands: {}".format(commands))    
     if request.method == 'POST':
-        form = forms.EventForm(request.POST,commands=commands, after_form=event.after_form)
+        form = EventForm(request.POST,commands=commands, after_form=event.after_form)
 
         if form.is_valid():
             for q, v in form.data.items():
@@ -133,11 +133,11 @@ def show_event(request):
             you.save()
             return redirect('/show_event/')
     else:
-        form = forms.EventForm(commands=commands, after_form=event.after_form)
+        form = EventForm(commands=commands, after_form=event.after_form)
 
     context = {
-        'event': event,
-        'form': form,
+        'event' : event,
+        'form' : form,
     }
     return render (request,'game/event.html', context)
 
@@ -150,23 +150,23 @@ def character_profile(request, character):
         other_party_members = Character.objects.filter(leader =you.leader).exclude(id=you.id)
         equipments = Equipment.objects.filter(owner = you)
         parameters = {
-                'wounds': models.CharacterParameter.objects.filter(character=you, parameter__short_name = 'W').aggregate(value=Sum('value')),
-                'move': models.CharacterParameter.objects.filter(character=you, parameter__short_name = 'M').aggregate(value=Sum('value')),
-                'weapon_skill': models.CharacterParameter.objects.filter(character=you, parameter__short_name = 'WS').aggregate(value=Sum('value')),
-                'ballistic_skill': models.CharacterParameter.objects.filter(character=you, parameter__short_name = 'BS').aggregate(value=Sum('value')),
-                'strength': models.CharacterParameter.objects.filter(character=you, parameter__short_name = 'S').aggregate(value=Sum('value')),
-                'toughness': models.CharacterParameter.objects.filter(character=you, parameter__short_name = 'T').aggregate(value=Sum('value')),
-                'initiative': models.CharacterParameter.objects.filter(character=you, parameter__short_name = 'I').aggregate(value=Sum('value')),
-                'attacks': models.CharacterParameter.objects.filter(character=you, parameter__short_name = 'A').aggregate(value=Sum('value')),
-                'luck': models.CharacterParameter.objects.filter(character=you, parameter__short_name = 'L').aggregate(value=Sum('value')),
-                'willpower': models.CharacterParameter.objects.filter(character=you, parameter__short_name = 'WP').aggregate(value=Sum('value')),
-                'pinning': models.CharacterParameter.objects.filter(character=you, parameter__short_name = 'EP').aggregate(value=Sum('value')),
+                'wounds' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'W').aggregate(value=Sum('value')),
+                'move' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'M').aggregate(value=Sum('value')),
+                'weapon_skill' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'WS').aggregate(value=Sum('value')),
+                'ballistic_skill' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'BS').aggregate(value=Sum('value')),
+                'strength' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'S').aggregate(value=Sum('value')),
+                'toughness' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'T').aggregate(value=Sum('value')),
+                'initiative' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'I').aggregate(value=Sum('value')),
+                'attacks' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'A').aggregate(value=Sum('value')),
+                'luck' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'L').aggregate(value=Sum('value')),
+                'willpower' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'WP').aggregate(value=Sum('value')),
+                'pinning' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'EP').aggregate(value=Sum('value')),
                 }
         context = {
-           'character': you,
-           'parameters': parameters,
-           'other_party_members': other_party_members,
-           'equipments': equipments,
+           'character' : you,
+           'parameters' : parameters,
+           'other_party_members' : other_party_members,
+           'equipments' : equipments,
         }
         return render (request,'game/character_profile.html', context)
     except ObjectDoesNotExist:
@@ -176,9 +176,9 @@ def character_profile(request, character):
 def choose_character(request):
     if request.method == 'POST':
         try:
-            form = forms.ChooseCharacterForm(request.POST, user=request.user, initial = {'character':request.session['character']})
+            form = ChooseCharacterForm(request.POST, user=request.user, initial = {'character':request.session['character']})
         except KeyError:
-             form = forms.ChooseCharacterForm(request.POST, user=request.user)
+             form = ChooseCharacterForm(request.POST, user=request.user)
 
         if form.is_valid():
             user = request.user
@@ -192,10 +192,10 @@ def choose_character(request):
             return redirect('/')
 
     else:
-        form = forms.ChooseCharacterForm(user=request.user)
+        form = ChooseCharacterForm(user=request.user)
 
     context = {
-        'form': form,
+        'form' : form,
     }
     return render (request,'game/simple_form.html', context)
 
@@ -205,7 +205,7 @@ def choose_leader(request):
     try: 
         you = request.user.selected_character#Character.objects.get(pk=request.session['character_id'])
         if request.method == 'POST':
-            form = forms.PartyLeaderForm(request.POST)
+            form = PartyLeaderForm(request.POST)
 
             if form.is_valid():
                 you.leader = form.cleaned_data['leader']
@@ -215,10 +215,10 @@ def choose_leader(request):
                 messages.success(request, 'Leader successfully choosen.')
                 return redirect('/')
         else:
-            form = forms.PartyLeaderForm()
+            form = PartyLeaderForm()
 
         context = {
-            'form': form,
+            'form' : form,
         }
         return render (request,'game/simple_form.html', context)
     except ObjectDoesNotExist:
@@ -229,11 +229,11 @@ def make_own_party(request):
     try: 
         you = request.user.selected_character#Character.objects.get(pk=request.session['character_id'])
         if request.method == 'POST':
-            form = forms.YesNoForm(request.POST, question="Are you sure you want to leave the {}'s party?".format(you.leader))
+            form = YesNoForm(request.POST, question="Are you sure you want to leave the {}'s party?".format(you.leader))
 
             if form.is_valid():
                 if form.cleaned_data['answer']=='True':
-                    for character in models.Character.objects.filter(leader=you.leader):
+                    for character in  Character.objects.filter(leader=you.leader):
                         character.leader=character
                         character.save()
                         request.session['leader']=True
@@ -242,10 +242,10 @@ def make_own_party(request):
 
                 return redirect('/')
         else:
-            form = forms.YesNoForm(question="Are you sure you want to leave the  {}'s party?".format(you.leader))
+            form = YesNoForm(question="Are you sure you want to leave the  {}'s party?".format(you.leader))
 
         context = {
-            'form': form,
+            'form' : form,
         }
         return render (request,'game/simple_form.html', context)
     except ObjectDoesNotExist:
@@ -253,9 +253,9 @@ def make_own_party(request):
 
 @login_required
 def begin_adventure(request):
-    companions = models.Character.objects.filter(leader=request.user.selected_character)
-    adventure_template = models.LocationTemplate.objects.get(pk=1)
-    adventure = models.Location.objects.create(template=adventure_template, name="caves")
+    companions = Character.objects.filter(leader=request.user.selected_character)
+    adventure_template = LocationTemplate.objects.get(pk=1)
+    adventure = Location.objects.create(template = adventure_template, name="caves")
     adventure.name="caves {}".format(adventure.id)
     adventure.save()
 
@@ -268,10 +268,10 @@ def begin_adventure(request):
 
 @login_required
 def end_adventure(request):
-    companions = models.Character.objects.filter(leader=request.user.selected_character)
+    companions = Character.objects.filter(leader=request.user.selected_character)
     prev_location = request.user.selected_character.location
-    after_template = models.LocationTemplate.objects.get(pk=2)
-    after = models.Location.objects.create(template=after_template, name="after adventure")
+    after_template = LocationTemplate.objects.get(pk=2)
+    after = Location.objects.create(template = after_template, name="after adventure")
     after.name="after adventure {}".format(after.id)
     after.save()
     for companion in companions:
@@ -287,7 +287,7 @@ def wait_outside(request):
     you = request.user.selected_character
     you.ticks = 0
     prev_location = you.location
-    you.location = models.Location.objects.get(pk=2)
+    you.location = Location.objects.get(pk=2)
     you.save()
 
     if not prev_location.character_set.all():
@@ -300,7 +300,7 @@ def wait_outside(request):
 def prepare_to_adventure(request):
     you = request.user.selected_character
     prev_location = you.location
-    you.location = models.Location.objects.get(pk=0)
+    you.location = Location.objects.get(pk=0)
     you.ticks = 0
     you.save()
 
@@ -316,11 +316,11 @@ def trip_to(request, target_id):
         you = request.user.selected_character
         you.ticks = 1
         you.save()
-        companions = models.Character.objects.filter(leader=you)
+        companions = Character.objects.filter(leader=you)
         prev_location = you.location
-        journey_template = models.LocationTemplate.objects.get(pk=target_id)
-        journey = models.Location.objects.create(template = journey_template, name="journey to")
-        journey.name = f"journey {journey.id}"
+        journey_template = LocationTemplate.objects.get(pk=target_id)
+        journey = Location.objects.create(template = journey_template, name="journey to")
+        journey.name="journey {}".format(journey.id)
         journey.save()
         for companion in companions:
             companion.location = journey
@@ -330,12 +330,12 @@ def trip_to(request, target_id):
          
         channel_layer = get_channel_layer() # nie jestem pewny czy to jest potrzebne. Czy tutaj.....
 
-        logger.error(f"zaczynamy! rzutow bedzie {journey.template.next_location.all()[0].no_of_dices}")
+        logger.error("zaczynamy! rzutow bedzie {}".format(journey.template.next_location.all()[0].no_of_dices))
         for dice_roll in range(1,2*journey.template.next_location.all()[0].no_of_dices+1):
-            event_roll = f"{Roll('1D6')}{Roll('1D6')}"
-            logger.error(f"event roll: {event_roll}")
+            event_roll = "{}{}".format(Roll('1D6'),Roll('1D6'))
+            logger.error("event roll: {}".format(event_roll))
 
-            event = models.EventTemplate.objects.get(number=event_roll, event_type__name='Hazards')
+            event = EventTemplate.objects.get(number=event_roll,event_type__name='Hazards')
 
             add_party_event(event, you.leader)
 
@@ -348,48 +348,48 @@ def look_for_shop(request, shop_id):
 
     day = you.ticks
     
-    shop = models.Shop.objects.get(pk=shop_id)
+    shop = Shop.objects.get(pk=shop_id)
     if you.warrior_type in shop.forbidden.all():
 
         messages.success(request, 'nie dla psa kiełbasa')
         return redirect('/')
 
-    activity, created = models.SettlementActivity.objects.get_or_create(character=you, location=you.location, shop=shop, defaults={'status': ShopStatus.objects.get(pk=1), 'day': day})
+    activity, created = SettlementActivity.objects.get_or_create(character=you, location=you.location, shop=shop, defaults={'status': ShopStatus.objects.get(pk=1), 'day': day})
 
 
     if activity.status.id==0 and shop.shop_type_id != 4 and shop.shop_type_id != 5: #TB:  usun 5!
         messages.success(request, 'tu już byłeś - wypad')
         return redirect('/')
     else:
-        success = Roll('{}D6'.format(you.location.template.no_of_dices))>models.Shop.objects.get(pk=shop_id).shop_type.availability
+        success = Roll('{}D6'.format(you.location.template.no_of_dices))>Shop.objects.get(pk=shop_id).shop_type.availability
         you.active_day = True
         you.save()
         if success:
             if shop.shop_type_id == 3:
-                activity.status = models.ShopStatus.objects.get(pk=1)
+                activity.status=ShopStatus.objects.get(pk=1)
                 activity.save()
                 return redirect('/visit_alehouse/')
             if shop.shop_type_id == 4:
-                activity.status = models.ShopStatus.objects.get(pk=0)
+                activity.status=ShopStatus.objects.get(pk=0)
                 activity.save()
                 return redirect('/visit_gambling_house/')
             if shop.shop_type_id == 5:
-                activity.status = models.ShopStatus.objects.get(pk=0)
+                activity.status=ShopStatus.objects.get(pk=0)
                 activity.save()
                 return redirect('/visit_temple/')
             if shop.shop_type_id == 6:
-                activity.status = models.ShopStatus.objects.get(pk=0)
+                activity.status=ShopStatus.objects.get(pk=0)
                 activity.save()
                 return redirect('/visit_alchemists_laboratory/')
             else:
-                activity.status = models.ShopStatus.objects.get(pk=0)
+                activity.status=ShopStatus.objects.get(pk=0)
                 activity.save()
                 return redirect('/visit_shop/{}/'.format(shop_id))
         else:
-            activity.status = models.ShopStatus.objects.get(pk=-1)
+            activity.status=ShopStatus.objects.get(pk=-1)
             activity.save()
             context = {
-                    'text': 'Cały dzień stracony i nic...',
+                    'text' : 'Cały dzień stracony i nic...',
             }
             return render (request,'game/modal.html', context)
 
@@ -414,15 +414,15 @@ def visit_shop(request, shop_id):
        def get_group_by_cols(self, alias=None):
            return []
 
-    shop = models.Shop.objects.get(pk=shop_id)
+    shop = Shop.objects.get(pk=shop_id)
 
     you = request.user.selected_character
-    my_equipments = models.Equipment.objects.filter(item=OuterRef('pk'), owner=you)
-    possible_items = models.Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.template.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
+    my_equipments = Equipment.objects.filter(item=OuterRef('pk'), owner=you)
+    possible_items = Item.objects.filter(available_in=shop).annotate(dice_roll=sum(Round(Random()*5)+1 for i in range(request.user.selected_character.location.template.no_of_dices))).annotate(available = ExpressionWrapper(Q(dice_roll__gte=F('chance_to_be_in_shop')),output_field=BooleanField())).annotate(to_sell=Exists(my_equipments))
     context = {
-        'shop': shop,
-        'possible_items': possible_items,
-        'user': request.user,
+        'shop' : shop,
+        'possible_items' : possible_items,
+        'user' : request.user,
     }
     return render (request,'game/visit_shop.html', context)
 
@@ -430,7 +430,7 @@ def visit_temple(request):
     you = request.user.selected_character
     if request.method == 'POST':
         if 'Exit' not in request.POST:
-            form = forms.TempleForm(request.POST, gold=you.get_current_gold())
+            form = TempleForm(request.POST, gold=you.get_current_gold())
             you.remove_gold(50,'Sacrifice in Temple')
             if form.is_valid():
                 roll = Roll('1D6')
@@ -446,26 +446,26 @@ def visit_temple(request):
                 else:
                     text = "The gods are not listening, and your Warrior's pleas go unanswered"
                 context = {
-                    'text': text,
+                    'text' : text,
                 }
 
                 return render (request,'game/modal.html', context)
         else:
             return redirect ('/end_of_day/')
     else:
-         form = forms.TempleForm(gold=you.get_current_gold())
+         form = TempleForm(gold=you.get_current_gold())
 
 
     context = {
-        'text': "Between adventures, many Warriors come to the local temple to offer up prayers and sacrifice in thanks for the adventure just completed, and for aid in the next.",
-        'form': form,
+        'text' : "Between adventures, many Warriors come to the local temple to offer up prayers and sacrifice in thanks for the adventure just completed, and for aid in the next.",
+        'form' : form,
     }
     return render (request,'game/simple_modal_form.html', context)
 
 def visit_alchemists_laboratory(request):
     you = request.user.selected_character
     if request.method == 'POST':
-        form = forms.AlchemistsForm(request.POST, character=request.user.selected_character)
+        form = AlchemistsForm(request.POST, character=request.user.selected_character)
         if form.is_valid():
             no_of_dices = form.cleaned_data['dices']
             item = form.cleaned_data['item']
@@ -484,29 +484,29 @@ def visit_alchemists_laboratory(request):
                 you.add_gold(roll_sum*25,'Transmutation of {} into gold'.format(item.item.name))
             item.delete()
             context = {
-                'text': text,
+                'text' : text,
             }
 
             return render (request,'game/modal.html', context)
 
     else:
-        form = forms.AlchemistsForm(character = request.user.selected_character)
+        form = AlchemistsForm(character = request.user.selected_character)
 
 
     context = {
-        'form': form,
+        'form' : form,
     }
     return render (request,'game/simple_form.html', context)
 
 
 def visit_gambling_house(request):
     if request.method == 'POST':
-        form = forms.GamblingForm(request.POST)
+        form = GamblingForm(request.POST)
         if form.is_valid():
             event_roll = Roll('1D6')
             bet = form.cleaned_data['bet'] * Roll('1D6')
             you = request.user.selected_character
-            most_valuable_item = models.Equipment.objects.filter(owner=you).order_by('-item__sell_price')[0]
+            most_valuable_item = Equipment.objects.filter(owner=you).order_by('-item__sell_price')[0]
             if event_roll == 1:
                 result, item = you.remove_gold_and_most_valuable_item_if_not_enough(bet,'Lost in Gambling House')
 
@@ -518,14 +518,14 @@ def visit_gambling_house(request):
             else:
                 text = "After a pleasurable day, he finishes evens. Still, nothing lost, nothing gained"
             context = {
-                    'text': text,
+                    'text' : text,
             }
             return render (request,'game/modal.html', context)
     else:
-        form = forms.GamblingForm()
+        form = GamblingForm()
 
     context = {
-        'form': form,
+        'form' : form,
     }
     return render (request,'game/simple_form.html', context)
 
@@ -533,7 +533,7 @@ def visit_alehouse(request):
     you = request.user.selected_character
     event_roll=Roll(you.warrior_type.alehouse_roll)
     
-    event = models.EventTemplate.objects.get(number=event_roll,event_type__name='Alehouse')
+    event = EventTemplate.objects.get(number=event_roll,event_type__name='Alehouse')
     add_warrior_event(event, you)
     return redirect('/end_of_day/')
 
@@ -544,7 +544,7 @@ def end_of_day(request):
         payer.save()
         event_roll = "{}{}".format(Roll('1D6'),Roll('1D6'))
         event_roll = "25"
-        event = models.EventTemplate.objects.get(number=event_roll,event_type__name='Settlement Events')
+        event = EventTemplate.objects.get(number=event_roll,event_type__name='Settlement Events')
         add_warrior_event(event, payer)
         return redirect('/show_event/')
     else:
@@ -564,10 +564,10 @@ def buy_item(request):
     else:
         result = "no way";
     return JsonResponse({
-        'result': result,
-        'gold': buyer.get_current_gold(),
-        'price': price,
-        'item': models.Item.objects.get(code=code).name,
+        'result' : result,
+        'gold' : buyer.get_current_gold(),
+        'price' : price,
+        'item' : Item.objects.get(code=code).name,
     })
 @csrf_protect
 def sell_item(request):
@@ -577,9 +577,9 @@ def sell_item(request):
     seller = request.user.selected_character
     result = seller.sell_item(code, price, buyer)
     return JsonResponse({
-        'result': result,
-        'gold': seller.get_current_gold(),
-        'price': price,
-        'item': models.Item.objects.get(code=code).name,
+        'result' : result,
+        'gold' : seller.get_current_gold(),
+        'price' : price,
+        'item' : Item.objects.get(code=code).name,
     })
 

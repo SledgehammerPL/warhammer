@@ -11,17 +11,11 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 """
 
 from pathlib import Path
-import environ
 import os
-import sys
-
+from django.utils.translation import gettext_lazy as _
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
-
-# Take environment variables from .env file
-env = environ.Env()
-environ.Env.read_env(BASE_DIR / '.env')
 
 
 # Quick-start development settings - unsuitable for production
@@ -49,16 +43,16 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'crispy_forms',
-    'crispy_bootstrap4',
     'channels',
 
-    'apps.game',
-    'apps.people',
+    'apps.game.apps.GameConfig',
+    'apps.people.apps.PersonConfig',
 ]
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -72,7 +66,7 @@ TEMPLATES = [
     {
         'BACKEND': 'django.template.backends.django.DjangoTemplates',
         'DIRS': [
-            os.path.join(BASE_DIR, 'templates')
+            os.path.join(BASE_DIR, 'apps', 'templates')
         ],
         'APP_DIRS': True,
         'OPTIONS': {
@@ -88,7 +82,7 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'core.wsgi.application'
-
+ASGI_APPLICATION = 'core.asgi.application'
 CHANNEL_LAYERS = {
     'default': {
         'BACKEND': 'channels_redis.core.RedisChannelLayer',
@@ -102,35 +96,12 @@ CHANNEL_LAYERS = {
 # Database
 # https://docs.djangoproject.com/en/3.1/ref/settings/#databases
 
-if 'test' in sys.argv:
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.sqlite3',
-            'TEST_CHARSET': 'UTF8', # if your normal db is utf8
-            'NAME': ':memory:', # in memory
-            'TEST_NAME': ':memory:', # in memory
-        }
+DATABASES = {
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
     }
-else:
-    DATABASES = {
-        'default': {
-            # Add 'postgresql_psycopg2','postgresql', 'mysql', 'sqlite3' or 'oracle'.
-            'ENGINE': 'django.db.backends.postgresql_psycopg2',
-            # Or path to database file if using sqlite3.
-            'NAME': env('DATABASE_NAME'),
-            # Not used with sqlite3.
-            'USER': env('DATABASE_USER'),
-            # Not used with sqlite3.
-            'PASSWORD': env('DATABASE_PASSWORD'),
-            # Set to empty string for localhost. Not used with sqlite3.
-            'HOST': env('DATABASE_HOST', default='127.0.0.1'),
-            # Set to empty string for default.
-            'PORT': env('DATABASE_PORT', default='5432'),
-            'TIME_ZONE': 'Europe/Warsaw',
-
-            # Not used with sqlite3.
-        }
-    }
+}
 
 
 # Password validation
@@ -155,7 +126,16 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/3.1/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'pl'
+
+LANGUAGES = [
+    ('pl', _('Polski')),
+    ('en', _('English')),
+]
+
+LOCALE_PATHS = [
+    BASE_DIR / 'locale',
+]
 
 TIME_ZONE = 'UTC'
 
@@ -167,19 +147,11 @@ USE_TZ = True
 
 
 # Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/5.2/howto/static-files/
+# https://docs.djangoproject.com/en/3.1/howto/static-files/
 
-# https://docs.djangoproject.com/en/4.1/ref/settings/#static-root
-STATIC_ROOT = BASE_DIR / 'staticfiles'
-
-# https://docs.djangoproject.com/en/4.1/ref/settings/#static-url
 STATIC_URL = '/static/'
-
-# Extra places for collectstatic to find static files.
-# https://docs.djangoproject.com/en/4.1/ref/settings/#staticfiles-dirs
-STATICFILES_DIRS = [
-]
-
+STATIC_ROOT = '/home/common/'
+DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 #TB:
 AUTH_USER_MODEL = 'people.Person'
 
@@ -188,5 +160,8 @@ ADMINS = [('Tomasz', 'tomasz@brzezina.pl'),]
 CRISPY_TEMPLATE_PACK = 'bootstrap4'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = True
 LOGIN_REDIRECT_URL = '/'
+try:
+    from .local.settings import *
+except ImportError as e:
+    pass
 
-DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
