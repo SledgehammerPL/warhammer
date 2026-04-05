@@ -1,12 +1,23 @@
 import json
+import re
 from channels.generic.websocket import AsyncWebsocketConsumer
 import logging
+
 logger = logging.getLogger('error_logger')
+
+
+def _chat_group_name(raw_value):
+    # Channels allows only ASCII alnum, hyphen, underscore and dot.
+    ascii_value = str(raw_value or "").encode("ascii", "ignore").decode("ascii")
+    safe_value = re.sub(r"[^A-Za-z0-9_.-]+", "_", ascii_value).strip("_.-")
+    if not safe_value:  # Ensure safe_value is not empty
+        safe_value = "anonymous"
+    return f"chat_{safe_value}"[:99]
 
 class ChatConsumer(AsyncWebsocketConsumer):
     async def connect(self):
         self.leader_name = self.scope['url_route']['kwargs']['leader_name']
-        self.leader_group_name = 'chat_%s' % self.leader_name
+        self.leader_group_name = _chat_group_name(self.leader_name)
 
         # Join leader group
         await self.channel_layer.group_add(

@@ -3,11 +3,21 @@ from django.db.models.signals import post_save
 from asgiref.sync import async_to_sync
 from channels.layers import get_channel_layer
 from django.db.models import Sum
+import re
 
 import logging
 logger = logging.getLogger('error_logger')
 
 channel_layer = get_channel_layer()
+
+
+def _chat_group_name(raw_value):
+    # Channels allows only ASCII alnum, hyphen, underscore and dot.
+    ascii_value = str(raw_value or "").encode("ascii", "ignore").decode("ascii")
+    safe_value = re.sub(r"[^A-Za-z0-9_.-]+", "_", ascii_value).strip("_.-")
+    if not safe_value:
+        safe_value = "anonymous"
+    return f"chat_{safe_value}"[:99]
 
 # Create your models here.
 class Race(models.Model):
@@ -259,7 +269,10 @@ class Event(models.Model):
 def create_event_trigger(sender, instance, *args, **kwargs):
     logger.error('event of {}'.format(instance.character))
     if Event.objects.filter(character=instance.character,done=False).count() == 1:
-        async_to_sync(channel_layer.group_send)("chat_{}".format(instance.character.leader.name),  {"type": "redirect", "redirect": "/show_event/"})
+        async_to_sync(channel_layer.group_send)(
+            _chat_group_name(instance.character.leader.name),
+            {"type": "redirect", "redirect": "/show_event/"},
+        )
 
 post_save.connect(create_event_trigger, sender=Event)
 
