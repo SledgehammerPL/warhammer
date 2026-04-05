@@ -34,10 +34,7 @@ SECRET_KEY = '%fb9mq3q-_3c@#r3j5$s^dgl-m)8m=0a2c&fzas+jc=f6(uakp'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = [
-        '127.0.0.1',
-        'warhammer.devel.b6a.pl',
-        ]
+ALLOWED_HOSTS = env.list('ALLOWED_HOSTS', default=['127.0.0.1'])
 
 CSRF_TRUSTED_ORIGINS = [
     'https://warhammer.devel.b6a.pl',
@@ -63,6 +60,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.locale.LocaleMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -278,3 +276,5 @@ LOGGING = {
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+# To sprawi, że WhiteNoise będzie serwował skompresowane pliki i dbał o cache
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'

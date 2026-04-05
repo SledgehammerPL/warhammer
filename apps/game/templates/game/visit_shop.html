@@ -1,9 +1,14 @@
 {% extends 'game/base.html' %}
 {% load crispy_forms_tags %}
+{% load i18n %}
 
 {% block head %}
 <script>
 var xhttp = new XMLHttpRequest();
+const boughtTemplate = "{% blocktrans %}You bought a __ITEM__ for __PRICE__ gold{% endblocktrans %}";
+const soldTemplate = "{% blocktrans %}You sold a __ITEM__ for __PRICE__ gold{% endblocktrans %}";
+const notEnoughGoldMessage = "{% trans 'You do not have enough gold. Get out there!'|escapejs %}";
+
 function buy_item(element_id, item, price, shop) {
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
@@ -12,12 +17,12 @@ function buy_item(element_id, item, price, shop) {
       if (data["result"]=="ok") {
         newMessage = document.createElement("div");
         newMessage.className = "alert alert-success alert-dismissible fade show";
-        newMessage.innerHTML = "You bought a "+data["item"]+" for "+data["price"]+" gold<button type=\"button\" class=\"close\" data-dismiss=\"alert\" aria-label=\"Close\"><span aria-hidden=\"true\">&times;</span></button>";
+        newMessage.innerHTML = boughtTemplate.replace('__ITEM__', data["item"]).replace('__PRICE__', data["price"]) + "<button type=\"button\" class=\"close\" data-dismiss=\"alert\" aria-label=\"Close\"><span aria-hidden=\"true\">&times;</span></button>";
         document.getElementById("btnsell"+element_id).style.display='inline';
       } else {
         newMessage = document.createElement("div");
         newMessage.className = "alert alert-danger alert-dismissible fade show";
-        newMessage.innerHTML = "You have no enough gold. Get out there!";
+        newMessage.innerHTML = notEnoughGoldMessage;
 
       }
       my_div = document.getElementById("messages")
@@ -39,7 +44,7 @@ function sell_item(element_id, item, price, shop) {
       document.getElementById('gold').innerHTML=data["gold"];
       newMessage = document.createElement("div");
       newMessage.className = "alert alert-success alert-dismissible fade show";
-      newMessage.innerHTML = "You sold a "+data["item"]+" for "+data["price"]+" gold<button type=\"button\" class=\"close\" data-dismiss=\"alert\" aria-label=\"Close\"><span aria-hidden=\"true\">&times;</span></button>";
+      newMessage.innerHTML = soldTemplate.replace('__ITEM__', data["item"]).replace('__PRICE__', data["price"]) + "<button type=\"button\" class=\"close\" data-dismiss=\"alert\" aria-label=\"Close\"><span aria-hidden=\"true\">&times;</span></button>";
       my_div = document.getElementById("messages")
       document.body.insertBefore(newMessage,my_div)
 
@@ -63,11 +68,11 @@ function sell_item(element_id, item, price, shop) {
     <h1 class="mt-2">{{ shop.name }}</h1>
     <table class="table table-hover">
       <thead>
-        <tr><th scope="col">EQUIPMENT</th><th scope="col">COST<br>(BUY)</th><th scope="col">COST<br>(SELL)</th><th scope="col">DESCRIPTION<th></th></tr>
+        <tr><th scope="col">{% trans "EQUIPMENT" %}</th><th scope="col">{% trans "COST" %}<br>({% trans "BUY" %})</th><th scope="col">{% trans "COST" %}<br>({% trans "SELL" %})</th><th scope="col">{% trans "DESCRIPTION" %}<th></th></tr>
       </thead>
       <tbody>
       {% for item in possible_items %}
-      <tr scope="row"><td>{{ item.name }}</td><td style="text-align:right">{{ item.buy_price }}</td><td style="text-align:right">{{ item.sell_price }}</td><td>{{ item.description }}. Only for: {{ item.restriction.all|join:", " }} <br><button id="btn{{forloop.counter}}" type="button" class="btn btn-info" onclick="this.style.visibility='hidden';{% if item.available %}document.getElementById('btnbuy{{forloop.counter}}').style.visibility='visible';{% else %}document.getElementById('notinstock{{forloop.counter}}').style.visibility='visible';{% endif %}">Check availibility</button> <button id="btnsell{{forloop.counter}}" style="display:{% if item.to_sell %}inline{% else %}none{% endif %}" type="button" class="btn btn-warning" onclick="sell_item({{ forloop.counter }},'{{ item.code }}', {{ item.sell_price }},'{{ shop.name }}')">SELL</button> {% if item.available %}<button style="visibility:hidden" id="btnbuy{{forloop.counter}}" type="button" class="btn btn-success" onclick="buy_item({{ forloop.counter }},'{{ item.code}}',{{ item.buy_price }},'{{ shop.name }}')">BUY</button>{% else %}<button style="visibility:hidden" id="notinstock{{forloop.counter}}" type="button" class="btn btn-danger" disabled>NOT IN STOCK</button>{% endif %}</td></tr>
+      <tr scope="row"><td>{{ item.name }}</td><td style="text-align:right">{{ item.buy_price }}</td><td style="text-align:right">{{ item.sell_price }}</td><td>{{ item.description }}. {% trans "Only for:" %} {{ item.restriction.all|join:", " }} <br><button id="btn{{forloop.counter}}" type="button" class="btn btn-info" onclick="this.style.visibility='hidden';{% if item.available %}document.getElementById('btnbuy{{forloop.counter}}').style.visibility='visible';{% else %}document.getElementById('notinstock{{forloop.counter}}').style.visibility='visible';{% endif %}">{% trans "Check availability" %}</button> <button id="btnsell{{forloop.counter}}" style="display:{% if item.to_sell %}inline{% else %}none{% endif %}" type="button" class="btn btn-warning" onclick="sell_item({{ forloop.counter }},'{{ item.code }}', {{ item.sell_price }},'{{ shop.name }}')">{% trans "SELL" %}</button> {% if item.available %}<button style="visibility:hidden" id="btnbuy{{forloop.counter}}" type="button" class="btn btn-success" onclick="buy_item({{ forloop.counter }},'{{ item.code}}',{{ item.buy_price }},'{{ shop.name }}')">{% trans "BUY" %}</button>{% else %}<button style="visibility:hidden" id="notinstock{{forloop.counter}}" type="button" class="btn btn-danger" disabled>{% trans "NOT IN STOCK" %}</button>{% endif %}</td></tr>
       {% endfor %}
       </tbody>
   </table>

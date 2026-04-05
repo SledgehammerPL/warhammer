@@ -1,15 +1,146 @@
 {% extends 'game/base.html' %}
 {% load crispy_forms_tags %}
+{% load i18n %}
 
 {% block head %}
+<style>
+  .panel-card { height: 100%; }
+  .map-placeholder {
+    background: #2a2a2a;
+    border-radius: 4px;
+    min-height: 220px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #888;
+    font-style: italic;
+  }
+  .sidebar-section { margin-bottom: 1rem; }
+  .sidebar-section h6 { border-bottom: 1px solid #dee2e6; padding-bottom: .25rem; margin-bottom: .5rem; }
+</style>
 {% endblock %}
 
 {% block content %}
-    <div class="container">
-<div class="row justify-content-center">
-  <div class="col-12">
-    <h1 class="mt-2">&nbsp;</h1>
-    <hr class="mt-0 mb-4">
-  </div>
+<div class="container-fluid mt-3">
+  <div class="row">
+
+    <!-- LEFT: shared state -->
+    <div class="col-md-7 mb-3">
+
+      <!-- Top: round / game time -->
+      <div class="card mb-3">
+        <div class="card-header font-weight-bold">{% trans "Game state" %}</div>
+        <div class="card-body py-2">
+          <div class="row">
+            <div class="col-6">
+              <small class="text-muted">{% trans "Round" %}</small><br>
+              <strong>{% if current_turn %}{{ current_turn.turn_number }}{% else %}—{% endif %}</strong>
+            </div>
+            <div class="col-6">
+              <small class="text-muted">{% trans "Power level" %}</small><br>
+              <strong>{% if current_turn %}{{ current_turn.power_level }}{% else %}—{% endif %}</strong>
+            </div>
+          </div>
+          {% if current_adventure %}
+          <div class="row mt-2">
+            <div class="col-12">
+              <small class="text-muted">{% trans "Adventure" %}</small><br>
+              <strong>{{ current_adventure.template.name }}</strong>
+            </div>
+          </div>
+          {% endif %}
+          {% if current_turn and current_turn.next_character %}
+          <div class="row mt-2">
+            <div class="col-12">
+              <small class="text-muted">{% trans "Next character" %}</small><br>
+              <strong>{{ current_turn.next_character.name }}</strong>
+            </div>
+          </div>
+          {% endif %}
+        </div>
+      </div>
+
+      <!-- Bottom: map / location -->
+      <div class="card">
+        <div class="card-header font-weight-bold">{% trans "Map" %}</div>
+        <div class="card-body py-2">
+          {% with loc=request.user.selected_character.location %}
+          {% if loc %}
+          <p class="mb-1"><strong>{% trans "Current location" %}:</strong> {{ loc.name }}</p>
+          {% if loc.template %}
+          <p class="mb-2 text-muted" style="font-size:.85rem">{{ loc.template.name }}</p>
+          {% endif %}
+          {% if loc.template.next_location.all %}
+          <p class="mb-1"><small class="text-muted">{% trans "Adjacent locations" %}:</small></p>
+          <ul class="list-unstyled mb-0 ml-2">
+            {% for adj in loc.template.next_location.all %}
+            <li>· {{ adj.name }}</li>
+            {% endfor %}
+          </ul>
+          {% endif %}
+          {% else %}
+          <div class="map-placeholder">{% trans "No location data" %}</div>
+          {% endif %}
+          {% endwith %}
+        </div>
+      </div>
+
+    </div><!-- /LEFT -->
+
+    <!-- RIGHT: character panel -->
+    <div class="col-md-5 mb-3">
+      <div class="card h-100">
+        <div class="card-header font-weight-bold">
+          {{ request.user.selected_character.name }}
+          <span class="text-muted font-weight-normal" style="font-size:.85rem">
+            — {{ request.user.selected_character.warrior_type }}
+          </span>
+        </div>
+        <div class="card-body">
+
+          <!-- Gold -->
+          <div class="sidebar-section">
+            <h6>{% trans "Gold" %}</h6>
+            <span id="gold" class="font-weight-bold" style="color:#b8860b">{{ gold }}</span>
+            <span class="text-muted" style="font-size:.85rem">gp</span>
+          </div>
+
+          <!-- Equipment -->
+          <div class="sidebar-section">
+            <h6>{% trans "Equipment" %}</h6>
+            {% if equipments %}
+            <ul class="list-unstyled mb-0">
+              {% for eq in equipments %}
+              <li style="font-size:.9rem">· {{ eq.item.name }}</li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <span class="text-muted" style="font-size:.85rem">{% trans "No equipment" %}</span>
+            {% endif %}
+          </div>
+
+          <!-- Spells -->
+          <div class="sidebar-section">
+            <h6>{% trans "Spells" %}</h6>
+            {% if spells %}
+            <ul class="list-unstyled mb-0">
+              {% for cs in spells %}
+              <li style="font-size:.9rem" title="{{ cs.spell.description }}">
+                · {{ cs.spell.name }}
+                <span class="badge badge-secondary">{{ cs.spell.cost }}</span>
+              </li>
+              {% endfor %}
+            </ul>
+            {% else %}
+            <span class="text-muted" style="font-size:.85rem">{% trans "No spells" %}</span>
+            {% endif %}
+          </div>
+
+        </div><!-- /card-body -->
+      </div><!-- /card -->
+    </div><!-- /RIGHT -->
+
+  </div><!-- /row -->
 </div>
 {% endblock %}
+

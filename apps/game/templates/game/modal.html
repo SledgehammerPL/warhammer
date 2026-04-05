@@ -1,5 +1,6 @@
 {% extends 'game/base.html' %}
 {% load crispy_forms_tags %}
+{% load i18n %}
 
 {% block head %}
 {% endblock %}
@@ -17,7 +18,7 @@
               {{ text }}
             </div>
         <div class="modal-footer">
-          <button type="button" onClick='window.location.href="/end_of_day/"' class="btn btn-primary">OK</button>
+          <button type="button" onClick='window.location.href="/end_of_day/"' class="btn btn-primary">{% trans "OK" %}</button>
         </div>
           </div>
         </div>

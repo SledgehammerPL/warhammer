@@ -20,12 +20,32 @@ logger = logging.getLogger('error_logger')
 # Create your views here.
 @login_required
 def index(request):
-    if request.user.selected_character.active_day:
-        redirect('/end_of_day/')
+    you = request.user.selected_character
+    if you and you.active_day:
+        return redirect('/end_of_day/')
+
+    equipments = []
+    gold = 0
+    spells = []
+    current_adventure = None
+    current_turn = None
+
+    if you:
+        equipments = Equipment.objects.filter(owner=you).select_related('item')
+        gold = you.get_current_gold() or 0
+        spells = CharacterSpell.objects.filter(character=you).select_related('spell')
+        current_adventure = Adventure.objects.filter(characters=you).order_by('-id').first()
+        if current_adventure:
+            current_turn = Turn.objects.filter(adventure=current_adventure).order_by('-turn_number').first()
 
     context = {
+        'equipments': equipments,
+        'gold': gold,
+        'spells': spells,
+        'current_adventure': current_adventure,
+        'current_turn': current_turn,
     }
-    return render (request,'game/index.html', context)
+    return render(request, 'game/index.html', context)
 
 @login_required
 def create_character(request):
@@ -58,6 +78,9 @@ def create_character(request):
                     move = CharacterParameter.objects.create(value=template.move,parameter=Parameter.objects.get(short_name='M'), character = warrior, description = 'initial value of move')
                     request.user.selected_character=warrior
                     request.user.save()
+                    initial_items = Item.objects.filter(initial_for=warrior_type)
+                    for item in initial_items:
+                        Equipment.objects.create(owner=warrior, item=item, description='starting equipment')
                     #request.session['character_id']=warrior.id
                     #request.session['character_name']=warrior.name
                     #request.session['leader']=True

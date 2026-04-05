@@ -48,3 +48,207 @@ msgstr "Logout"
 
 msgid "Login"
 msgstr "Login"
+
+msgid "This site uses cookies to operate correctly."
+msgstr "This site uses cookies to operate correctly."
+
+msgid "More information"
+msgstr "More information"
+
+msgid "Understood"
+msgstr "Understood"
+
+msgid "Send"
+msgstr "Send"
+
+msgid "Gold"
+msgstr "Gold"
+
+msgid "Your characters"
+msgstr "Your characters"
+
+msgid "HIT!"
+msgstr "HIT!"
+
+msgid "MISS"
+msgstr "MISS"
+
+msgid "Leader"
+msgstr "Leader"
+
+msgid "Member"
+msgstr "Member"
+
+msgid "of"
+msgstr "of"
+
+msgid "with"
+msgstr "with"
+
+msgid "Wounds"
+msgstr "Wounds"
+
+msgid "Move"
+msgstr "Move"
+
+msgid "Weapon Skill"
+msgstr "Weapon Skill"
+
+msgid "Ballistic Skill"
+msgstr "Ballistic Skill"
+
+msgid "SHOOT"
+msgstr "SHOOT"
+
+msgid "Strength"
+msgstr "Strength"
+
+msgid "Toughness"
+msgstr "Toughness"
+
+msgid "Initiative"
+msgstr "Initiative"
+
+msgid "Attacks"
+msgstr "Attacks"
+
+msgid "Luck"
+msgstr "Luck"
+
+msgid "Willpower"
+msgstr "Willpower"
+
+msgid "Equipment"
+msgstr "Equipment"
+
+msgid "Pinning"
+msgstr "Pinning"
+
+msgid "Breaks on a roll of %(pinning)s+"
+msgstr "Breaks on a roll of %(pinning)s+"
+
+msgid "Automatic pinning"
+msgstr "Automatic pinning"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "You bought a __ITEM__ for __PRICE__ gold"
+msgstr "You bought a __ITEM__ for __PRICE__ gold"
+
+msgid "You sold a __ITEM__ for __PRICE__ gold"
+msgstr "You sold a __ITEM__ for __PRICE__ gold"
+
+msgid "You do not have enough gold. Get out there!"
+msgstr "You do not have enough gold. Get out there!"
+
+msgid "EQUIPMENT"
+msgstr "EQUIPMENT"
+
+msgid "COST"
+msgstr "COST"
+
+msgid "BUY"
+msgstr "BUY"
+
+msgid "SELL"
+msgstr "SELL"
+
+msgid "DESCRIPTION"
+msgstr "DESCRIPTION"
+
+msgid "Only for:"
+msgstr "Only for:"
+
+msgid "Check availability"
+msgstr "Check availability"
+
+msgid "NOT IN STOCK"
+msgstr "NOT IN STOCK"
+
+msgid "Your username and password did not match. Please try again."
+msgstr "Your username and password did not match. Please try again."
+
+msgid "Your account does not have access to this page. To proceed, please log in with an account that has access."
+msgstr "Your account does not have access to this page. To proceed, please log in with an account that has access."
+
+msgid "Please log in to see this page."
+msgstr "Please log in to see this page."
+
+msgid "Lost password?"
+msgstr "Lost password?"
+
+msgid "Logged out!"
+msgstr "Logged out!"
+
+msgid "Click here to log in again."
+msgstr "Click here to log in again."
+
+msgid "Reset password"
+msgstr "Reset password"
+
+msgid "We have emailed you instructions for setting your password. If they have not arrived in a few minutes, check your spam folder."
+msgstr "We have emailed you instructions for setting your password. If they have not arrived in a few minutes, check your spam folder."
+
+msgid "Please enter (and confirm) your new password."
+msgstr "Please enter (and confirm) your new password."
+
+msgid "New password:"
+msgstr "New password:"
+
+msgid "Confirm password:"
+msgstr "Confirm password:"
+
+msgid "Change my password"
+msgstr "Change my password"
+
+msgid "Password reset failed"
+msgstr "Password reset failed"
+
+msgid "The password reset link was invalid, possibly because it has already been used. Please request a new password reset."
+msgstr "The password reset link was invalid, possibly because it has already been used. Please request a new password reset."
+
+msgid "The password has been changed!"
+msgstr "The password has been changed!"
+
+msgid "Log in again?"
+msgstr "Log in again?"
+
+msgid "Someone asked for password reset for email %(email)s. Follow the link below:"
+msgstr "Someone asked for password reset for email %(email)s. Follow the link below:"
+
+msgid "Game state"
+msgstr "Game state"
+
+msgid "Round"
+msgstr "Round"
+
+msgid "Power level"
+msgstr "Power level"
+
+msgid "Adventure"
+msgstr "Adventure"
+
+msgid "Next character"
+msgstr "Next character"
+
+msgid "Map"
+msgstr "Map"
+
+msgid "Current location"
+msgstr "Current location"
+
+msgid "Adjacent locations"
+msgstr "Adjacent locations"
+
+msgid "No location data"
+msgstr "No location data"
+
+msgid "No equipment"
+msgstr "No equipment"
+
+msgid "Spells"
+msgstr "Spells"
+
+msgid "No spells"
+msgstr "No spells"

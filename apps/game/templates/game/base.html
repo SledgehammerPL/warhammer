@@ -1,6 +1,7 @@
-{% load static %}
+{% load static i18n %}
 <!doctype html>
-<html lang="pl">
+{% get_current_language as CURRENT_LANGUAGE %}
+<html lang="{{ CURRENT_LANGUAGE }}">
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width,minimum-scale=1.0,maximum-scale=1.0"/>
@@ -19,10 +20,10 @@
     <div id="background"></div>
       {% include 'game/navbar.html' %}
     <div class="nk-cookie-banner alert alert-dark text-center mb-0" role="alert">
-  🍪 Ta strona używa ciasteczek do poprawnego działania.
-  <a href="/privacy/" target="blank" rel="noopener noreferrer">Więcej informacji</a>
+  {% trans "This site uses cookies to operate correctly." %}
+  <a href="/privacy/" target="blank" rel="noopener noreferrer">{% trans "More information" %}</a>
   <button type="button" class="btn btn-primary btn-sm ml-3" onclick="window.nk_hideCookieBanner()">
-    Zrozumiano
+    {% trans "Understood" %}
   </button>
     </div>
     {% if messages %}
@@ -36,7 +37,7 @@
     {% endblock %}
     <textarea id="chat-log" cols="40" rows="5"></textarea><br>
     <input id="chat-message-input" type="text" size="40"><br>
-    <input id="chat-message-submit" type="button" value="Send">
+    <input id="chat-message-submit" type="button" value="{% trans 'Send' %}">
 
     <script src="/static/js/websocket.js"></script>
     {% include 'game/footer.html' %}

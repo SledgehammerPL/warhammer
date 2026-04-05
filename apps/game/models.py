@@ -92,6 +92,7 @@ class Item(models.Model):
     buy_price = models.PositiveIntegerField(default=100000)
     sell_price = models.PositiveIntegerField(default=0)
     command = models.CharField(max_length=256, blank=True)
+    initial_for = models.ManyToManyField(WarriorType, blank=True, related_name='initial_items')
     def __str__(self):
         return "{} ({})".format(self.name, self.code)
   
@@ -285,4 +286,90 @@ class SettlementActivity(models.Model):
     status = models.ForeignKey(ShopStatus, on_delete = models.RESTRICT)
     location = models.ForeignKey(Location, on_delete = models.CASCADE)
     shop = models.ForeignKey(Shop, on_delete = models.RESTRICT)
+
+
+class Party(models.Model):
+    leader = models.ForeignKey(Character, on_delete=models.RESTRICT, related_name='led_parties')
+
+    def __str__(self):
+        return "Party of {}".format(self.leader.name)
+
+
+class ObjectiveRoom(models.Model):
+    name = models.CharField(max_length=200)
+    description = models.TextField()
+
+    def __str__(self):
+        return self.name
+
+
+class AdventureTemplate(models.Model):
+    name = models.CharField(max_length=200)
+    description = models.TextField()
+    objective_room = models.ForeignKey(ObjectiveRoom, on_delete=models.RESTRICT, null=True, blank=True)
+
+    def __str__(self):
+        return self.name
+
+
+class Adventure(models.Model):
+    template = models.ForeignKey(AdventureTemplate, on_delete=models.RESTRICT, null=True, blank=True)
+    leader = models.ForeignKey(Character, on_delete=models.RESTRICT, related_name='led_adventures')
+    characters = models.ManyToManyField(
+        Character,
+        through='AdventureCharacter',
+        related_name='adventures',
+    )
+    created = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        if self.template:
+            return self.template.name
+        return "Adventure {}".format(self.id)
+
+
+class AdventureCharacter(models.Model):
+    adventure = models.ForeignKey(Adventure, on_delete=models.CASCADE)
+    character = models.ForeignKey(Character, on_delete=models.CASCADE)
+    order = models.PositiveIntegerField(default=0)
+
+    class Meta:
+        ordering = ['order']
+        unique_together = [('adventure', 'character')]
+
+
+class Turn(models.Model):
+    adventure = models.ForeignKey(Adventure, on_delete=models.CASCADE, related_name='turns')
+    turn_number = models.PositiveIntegerField(default=1)
+    power_level = models.PositiveIntegerField(default=0)
+    next_character = models.ForeignKey(
+        Character,
+        on_delete=models.RESTRICT,
+        null=True, blank=True,
+        related_name='next_turns',
+    )
+
+    class Meta:
+        ordering = ['turn_number']
+
+    def __str__(self):
+        return "Turn {} (Adventure: {})".format(self.turn_number, self.adventure)
+
+
+class Spell(models.Model):
+    name = models.CharField(max_length=200)
+    description = models.TextField()
+    cost = models.PositiveIntegerField(default=0)
+
+    def __str__(self):
+        return self.name
+
+
+class CharacterSpell(models.Model):
+    character = models.ForeignKey(Character, on_delete=models.CASCADE, related_name='spells')
+    spell = models.ForeignKey(Spell, on_delete=models.RESTRICT)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return "{} – {}".format(self.character.name, self.spell.name)
 

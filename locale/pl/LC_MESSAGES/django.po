@@ -48,3 +48,207 @@ msgstr "Wyloguj"
 
 msgid "Login"
 msgstr "Zaloguj"
+
+msgid "This site uses cookies to operate correctly."
+msgstr "Ta strona używa ciasteczek do poprawnego działania."
+
+msgid "More information"
+msgstr "Więcej informacji"
+
+msgid "Understood"
+msgstr "Zrozumiano"
+
+msgid "Send"
+msgstr "Wyślij"
+
+msgid "Gold"
+msgstr "Złoto"
+
+msgid "Your characters"
+msgstr "Twoje postacie"
+
+msgid "HIT!"
+msgstr "TRAFIENIE!"
+
+msgid "MISS"
+msgstr "PUDŁO"
+
+msgid "Leader"
+msgstr "Lider"
+
+msgid "Member"
+msgstr "Członek"
+
+msgid "of"
+msgstr "drużyny"
+
+msgid "with"
+msgstr "z"
+
+msgid "Wounds"
+msgstr "Rany"
+
+msgid "Move"
+msgstr "Ruch"
+
+msgid "Weapon Skill"
+msgstr "Walka Wręcz"
+
+msgid "Ballistic Skill"
+msgstr "Umiejętność Strzelecka"
+
+msgid "SHOOT"
+msgstr "STRZAŁ"
+
+msgid "Strength"
+msgstr "Siła"
+
+msgid "Toughness"
+msgstr "Wytrzymałość"
+
+msgid "Initiative"
+msgstr "Inicjatywa"
+
+msgid "Attacks"
+msgstr "Ataki"
+
+msgid "Luck"
+msgstr "Szczęście"
+
+msgid "Willpower"
+msgstr "Siła Woli"
+
+msgid "Equipment"
+msgstr "Wyposażenie"
+
+msgid "Pinning"
+msgstr "Przypięcie"
+
+msgid "Breaks on a roll of %(pinning)s+"
+msgstr "Przerywa przy rzucie %(pinning)s+"
+
+msgid "Automatic pinning"
+msgstr "Automatyczne przypięcie"
+
+msgid "OK"
+msgstr "OK"
+
+msgid "You bought a __ITEM__ for __PRICE__ gold"
+msgstr "Kupiono __ITEM__ za __PRICE__ złota"
+
+msgid "You sold a __ITEM__ for __PRICE__ gold"
+msgstr "Sprzedano __ITEM__ za __PRICE__ złota"
+
+msgid "You do not have enough gold. Get out there!"
+msgstr "Nie masz wystarczająco złota. Ruszaj po więcej!"
+
+msgid "EQUIPMENT"
+msgstr "EKWIPUNEK"
+
+msgid "COST"
+msgstr "KOSZT"
+
+msgid "BUY"
+msgstr "KUP"
+
+msgid "SELL"
+msgstr "SPRZEDAJ"
+
+msgid "DESCRIPTION"
+msgstr "OPIS"
+
+msgid "Only for:"
+msgstr "Tylko dla:"
+
+msgid "Check availability"
+msgstr "Sprawdź dostępność"
+
+msgid "NOT IN STOCK"
+msgstr "BRAK NA STANIE"
+
+msgid "Your username and password did not match. Please try again."
+msgstr "Nazwa użytkownika i hasło nie pasują do siebie. Spróbuj ponownie."
+
+msgid "Your account does not have access to this page. To proceed, please log in with an account that has access."
+msgstr "Twoje konto nie ma dostępu do tej strony. Aby kontynuować, zaloguj się kontem z uprawnieniami."
+
+msgid "Please log in to see this page."
+msgstr "Zaloguj się, aby zobaczyć tę stronę."
+
+msgid "Lost password?"
+msgstr "Nie pamiętasz hasła?"
+
+msgid "Logged out!"
+msgstr "Wylogowano!"
+
+msgid "Click here to log in again."
+msgstr "Kliknij tutaj, aby zalogować się ponownie."
+
+msgid "Reset password"
+msgstr "Zresetuj hasło"
+
+msgid "We have emailed you instructions for setting your password. If they have not arrived in a few minutes, check your spam folder."
+msgstr "Wysłaliśmy instrukcję ustawienia hasła na Twój adres e-mail. Jeśli wiadomość nie dotrze w ciągu kilku minut, sprawdź folder spam."
+
+msgid "Please enter (and confirm) your new password."
+msgstr "Wpisz (i potwierdź) nowe hasło."
+
+msgid "New password:"
+msgstr "Nowe hasło:"
+
+msgid "Confirm password:"
+msgstr "Potwierdź hasło:"
+
+msgid "Change my password"
+msgstr "Zmień moje hasło"
+
+msgid "Password reset failed"
+msgstr "Reset hasła nie powiódł się"
+
+msgid "The password reset link was invalid, possibly because it has already been used. Please request a new password reset."
+msgstr "Link do resetu hasła jest nieprawidłowy, prawdopodobnie został już użyty. Poproś o nowy reset hasła."
+
+msgid "The password has been changed!"
+msgstr "Hasło zostało zmienione!"
+
+msgid "Log in again?"
+msgstr "Zalogować się ponownie?"
+
+msgid "Someone asked for password reset for email %(email)s. Follow the link below:"
+msgstr "Ktoś poprosił o reset hasła dla adresu %(email)s. Skorzystaj z linku poniżej:"
+
+msgid "Game state"
+msgstr "Stan gry"
+
+msgid "Round"
+msgstr "Runda"
+
+msgid "Power level"
+msgstr "Poziom mocy"
+
+msgid "Adventure"
+msgstr "Przygoda"
+
+msgid "Next character"
+msgstr "Następna postać"
+
+msgid "Map"
+msgstr "Mapa"
+
+msgid "Current location"
+msgstr "Bieżąca lokacja"
+
+msgid "Adjacent locations"
+msgstr "Sąsiednie lokacje"
+
+msgid "No location data"
+msgstr "Brak danych o lokacji"
+
+msgid "No equipment"
+msgstr "Brak wyposażenia"
+
+msgid "Spells"
+msgstr "Czary"
+
+msgid "No spells"
+msgstr "Brak czarów"
