@@ -17,6 +17,22 @@
   }
   .sidebar-section { margin-bottom: 1rem; }
   .sidebar-section h6 { border-bottom: 1px solid #dee2e6; padding-bottom: .25rem; margin-bottom: .5rem; }
+  .character-panel-body .character-stats-col {
+    border-right: 1px solid rgba(74, 58, 43, 0.6);
+  }
+  @media (max-width: 767.98px) {
+    .character-panel-body .character-stats-col {
+      border-right: 0;
+      border-bottom: 1px solid rgba(74, 58, 43, 0.6);
+      margin-bottom: 1rem;
+      padding-bottom: 0.5rem;
+    }
+  }
+  .badge-btn {
+    border: 0;
+    cursor: pointer;
+    line-height: 1.2;
+  }
 </style>
 {% endblock %}
 
@@ -24,7 +40,124 @@
 <div class="container-fluid mt-3">
   <div class="row">
 
-    <!-- LEFT: shared state -->
+    <!-- LEFT: character panel -->
+    <div class="col-md-5 mb-3">
+      <div class="card h-100{% if request.user.selected_character.is_leader %} character-card--leader{% endif %}">
+        <div class="card-header font-weight-bold d-flex flex-wrap align-items-center justify-content-between">
+          <div>
+            {{ request.user.selected_character.name }}
+            <span class="text-muted font-weight-normal" style="font-size:.85rem">
+              — {{ request.user.selected_character.warrior_type }}
+              · {{ request.user.selected_character.warrior_type.race }}
+              · {% trans "Level" %} {{ request.user.selected_character.battle_level }}
+            </span>
+          </div>
+          {% include 'game/leader_badge.html' with character=request.user.selected_character %}
+        </div>
+        <div class="card-body character-panel-body">
+          <div class="row">
+            <div class="col-md-4 character-stats-col">
+              <div class="sidebar-section">
+                <h6>{% trans "Characteristics" %}</h6>
+                {% include 'game/parameters_table.html' %}
+              </div>
+              <div class="sidebar-section mb-md-0">
+                <h6>{% trans "Gold" %}</h6>
+                <span id="gold" class="font-weight-bold" style="color:#b8860b">{{ gold }}</span>
+                <span class="text-muted" style="font-size:.85rem">gp</span>
+              </div>
+            </div>
+            <div class="col-md-8 character-equipment-col pl-md-3">
+              <div class="sidebar-section">
+                <h6>{% trans "Weapon" %}</h6>
+                {% if equipped_weapon %}
+                <span data-toggle="tooltip" data-placement="right" title="{{ equipped_weapon.item.description }}">⚔ {{ equipped_weapon.item.name }}</span>
+                <button type="button" onclick="unequipItem('weapon')" class="badge badge-light border ml-1 badge-btn" title="{% trans 'Unequip' %}">x</button>
+                {% else %}
+                <span class="text-muted" style="font-size:.85rem">—</span>
+                {% endif %}
+              </div>
+              <div class="sidebar-section">
+                <h6>{% trans "Ballistic Weapon" %}</h6>
+                {% if equipped_ballistic_weapon %}
+                <span data-toggle="tooltip" data-placement="right" title="{{ equipped_ballistic_weapon.item.description }}">🏹 {{ equipped_ballistic_weapon.item.name }}</span>
+                <button type="button" onclick="unequipItem('ballistic_weapon')" class="badge badge-light border ml-1 badge-btn" title="{% trans 'Unequip' %}">x</button>
+                {% else %}
+                <span class="text-muted" style="font-size:.85rem">—</span>
+                {% endif %}
+              </div>
+              <div class="sidebar-section">
+                <h6>{% trans "Helmet" %}</h6>
+                {% if equipped_helmet %}
+                <span data-toggle="tooltip" data-placement="right" title="{{ equipped_helmet.item.description }}">⛑ {{ equipped_helmet.item.name }}</span>
+                <button type="button" onclick="unequipItem('helmet')" class="badge badge-light border ml-1 badge-btn" title="{% trans 'Unequip' %}">x</button>
+                {% else %}
+                <span class="text-muted" style="font-size:.85rem">—</span>
+                {% endif %}
+              </div>
+              <div class="sidebar-section">
+                <h6>{% trans "Armour" %}</h6>
+                {% if equipped_armour %}
+                <span data-toggle="tooltip" data-placement="right" title="{{ equipped_armour.item.description }}">🛡 {{ equipped_armour.item.name }}</span>
+                <button type="button" onclick="unequipItem('armour')" class="badge badge-light border ml-1 badge-btn" title="{% trans 'Unequip' %}">x</button>
+                {% else %}
+                <span class="text-muted" style="font-size:.85rem">—</span>
+                {% endif %}
+              </div>
+              <div class="sidebar-section">
+                <h6>{% trans "Boots" %}</h6>
+                {% if equipped_boots %}
+                <span data-toggle="tooltip" data-placement="right" title="{{ equipped_boots.item.description }}">🥾 {{ equipped_boots.item.name }}</span>
+                <button type="button" onclick="unequipItem('boots')" class="badge badge-light border ml-1 badge-btn" title="{% trans 'Unequip' %}">x</button>
+                {% else %}
+                <span class="text-muted" style="font-size:.85rem">—</span>
+                {% endif %}
+              </div>
+              <div class="sidebar-section">
+                <h6>{% trans "Shield" %}</h6>
+                {% if equipped_shield %}
+                <span data-toggle="tooltip" data-placement="right" title="{{ equipped_shield.item.description }}">🔰 {{ equipped_shield.item.name }}</span>
+                <button type="button" onclick="unequipItem('shield')" class="badge badge-light border ml-1 badge-btn" title="{% trans 'Unequip' %}">x</button>
+                {% else %}
+                <span class="text-muted" style="font-size:.85rem">—</span>
+                {% endif %}
+              </div>
+              <div class="sidebar-section">
+                <h6>{% trans "Equipment" %}</h6>
+                {% if equipments %}
+                <div>
+                  {% for eq in equipments %}
+                  <button type="button" onclick="equipItem({{ eq.id }})" class="badge badge-secondary mb-1 mr-1 badge-btn" data-toggle="tooltip" data-placement="right" title="{{ eq.item.description }}">{{ eq.item.name }}</button>
+                  {% endfor %}
+                </div>
+                {% else %}
+                <span class="text-muted" style="font-size:.85rem">{% trans "No equipment" %}</span>
+                {% endif %}
+              </div>
+              {% if request.user.selected_character.warrior_type.can_cast_spells %}
+              <div class="sidebar-section mb-0">
+                <h6>{% trans "Spells" %}</h6>
+                {% if spells %}
+                <ul class="list-unstyled mb-0">
+                  {% for cs in spells %}
+                  <li style="font-size:.9rem" title="{{ cs.spell.description }}">
+                    · {{ cs.spell.name }}
+                    <span class="badge badge-secondary">{{ cs.spell.cost }}</span>
+                  </li>
+                  {% endfor %}
+                </ul>
+                {% else %}
+                <span class="text-muted" style="font-size:.85rem">{% trans "No spells" %}</span>
+                {% endif %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+        </div><!-- /card-body -->
+      </div><!-- /card -->
+    </div><!-- /LEFT -->
+
+    <!-- RIGHT: shared state -->
     <div class="col-md-7 mb-3">
 
       <!-- Top: round / game time -->
@@ -85,62 +218,39 @@
         </div>
       </div>
 
-    </div><!-- /LEFT -->
-
-    <!-- RIGHT: character panel -->
-    <div class="col-md-5 mb-3">
-      <div class="card h-100">
-        <div class="card-header font-weight-bold">
-          {{ request.user.selected_character.name }}
-          <span class="text-muted font-weight-normal" style="font-size:.85rem">
-            — {{ request.user.selected_character.warrior_type }}
-          </span>
-        </div>
-        <div class="card-body">
-
-          <!-- Gold -->
-          <div class="sidebar-section">
-            <h6>{% trans "Gold" %}</h6>
-            <span id="gold" class="font-weight-bold" style="color:#b8860b">{{ gold }}</span>
-            <span class="text-muted" style="font-size:.85rem">gp</span>
-          </div>
-
-          <!-- Equipment -->
-          <div class="sidebar-section">
-            <h6>{% trans "Equipment" %}</h6>
-            {% if equipments %}
-            <ul class="list-unstyled mb-0">
-              {% for eq in equipments %}
-              <li style="font-size:.9rem">· {{ eq.item.name }}</li>
-              {% endfor %}
-            </ul>
-            {% else %}
-            <span class="text-muted" style="font-size:.85rem">{% trans "No equipment" %}</span>
-            {% endif %}
-          </div>
-
-          <!-- Spells -->
-          <div class="sidebar-section">
-            <h6>{% trans "Spells" %}</h6>
-            {% if spells %}
-            <ul class="list-unstyled mb-0">
-              {% for cs in spells %}
-              <li style="font-size:.9rem" title="{{ cs.spell.description }}">
-                · {{ cs.spell.name }}
-                <span class="badge badge-secondary">{{ cs.spell.cost }}</span>
-              </li>
-              {% endfor %}
-            </ul>
-            {% else %}
-            <span class="text-muted" style="font-size:.85rem">{% trans "No spells" %}</span>
-            {% endif %}
-          </div>
-
-        </div><!-- /card-body -->
-      </div><!-- /card -->
     </div><!-- /RIGHT -->
 
   </div><!-- /row -->
 </div>
+<script>
+function equipmentRpc(action, payload) {
+  var xhttp = new XMLHttpRequest();
+  xhttp.open('POST', '/equipment/rpc/', true);
+  xhttp.setRequestHeader('X-CSRFToken', '{{ csrf_token }}');
+  xhttp.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
+  xhttp.onreadystatechange = function() {
+    if (xhttp.readyState === 4) {
+      if (xhttp.status === 200) {
+        window.location.reload();
+      }
+    }
+  };
+  var body = 'action=' + encodeURIComponent(action);
+  for (var key in payload) {
+    if (Object.prototype.hasOwnProperty.call(payload, key)) {
+      body += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(payload[key]);
+    }
+  }
+  xhttp.send(body);
+}
+
+function equipItem(equipmentId) {
+  equipmentRpc('equip', {equipment_id: equipmentId});
+}
+
+function unequipItem(slot) {
+  equipmentRpc('unequip', {slot: slot});
+}
+</script>
 {% endblock %}
 
