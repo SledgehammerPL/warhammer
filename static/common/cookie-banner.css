@@ -1,0 +1,39 @@
+.nk-cookie-banner {
+  position: sticky;
+  bottom: 0;
+  z-index: 1030;
+  border-radius: 0;
+  border: 0;
+  color: #efe5d4;
+  background: linear-gradient(180deg, rgba(48, 34, 24, 0.97) 0%, rgba(30, 21, 15, 0.98) 100%) !important;
+  border-top: 1px solid #5c4431;
+  box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
+}
+
+.nk-cookie-banner a {
+  color: #d8b06a;
+  text-decoration: underline;
+}
+
+.nk-cookie-banner .btn {
+  background: linear-gradient(180deg, #b58a42 0%, #8f672e 100%);
+  border-color: #7a5627;
+}
+
+.nk-cookie-banner .btn:hover,
+.nk-cookie-banner .btn:focus {
+  background: linear-gradient(180deg, #c29a50 0%, #9e7336 100%);
+  border-color: #8e652f;
+}
+
+@media (max-width: 768px) {
+  .nk-cookie-banner {
+    font-size: 0.9rem;
+    line-height: 1.35;
+    padding: 0.75rem 0.75rem;
+  }
+
+  .nk-cookie-banner .btn {
+    margin-top: 0.5rem;
+  }
+}

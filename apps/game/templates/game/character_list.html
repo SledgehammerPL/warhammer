@@ -13,7 +13,11 @@
     <hr class="mt-0 mb-4">
     <ul>
     {% for character in characters %}
-    <li><a href="/characters/{{ character.id }}">{{ character }}</a> [{{ character.party }}]</li>
+    <li>
+      <a href="/characters/{{ character.id }}">{{ character }}</a>
+      {% include 'game/leader_badge.html' with character=character %}
+      [{{ character.party }}]
+    </li>
     {% endfor %}
     </ul>
   </div>

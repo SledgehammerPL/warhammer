@@ -1,0 +1,314 @@
+@import url("https://fonts.googleapis.com/css2?family=Cinzel:wght@500;700;900&family=Source+Sans+3:wght@400;600;700&display=swap");
+
+:root {
+  --ink: #ece5d7;
+  --ink-strong: #f7f0df;
+  --ink-muted: #c8ba9e;
+  --gold: #b88a3a;
+  --gold-bright: #d2ac5b;
+  --line: #4a3a2b;
+}
+
+html,
+body {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  color: var(--ink-strong);
+  font-family: "Source Sans 3", "Segoe UI", sans-serif !important;
+  letter-spacing: 0.01em;
+  background: #0d0b0a;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+.navbar-brand,
+.card-header {
+  font-family: "Cinzel", Georgia, serif;
+  letter-spacing: 0.04em;
+}
+
+#background {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  background:
+    radial-gradient(1200px 720px at 80% -8%, rgba(190, 95, 37, 0.18), transparent 58%),
+    radial-gradient(820px 550px at 18% 8%, rgba(149, 123, 58, 0.16), transparent 52%),
+    linear-gradient(180deg, #17110d 0%, #110d0a 55%, #0c0907 100%);
+}
+
+#background::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  opacity: 0.08;
+  background-image:
+    linear-gradient(90deg, transparent 49%, rgba(255, 255, 255, 0.9) 50%, transparent 51%),
+    linear-gradient(0deg, transparent 49%, rgba(255, 255, 255, 0.9) 50%, transparent 51%);
+  background-size: 14px 14px;
+  pointer-events: none;
+}
+
+.container,
+.container-fluid {
+  position: relative;
+}
+
+.navbar {
+  background: linear-gradient(180deg, #3a2b1f 0%, #1c1410 100%) !important;
+  border-bottom: 1px solid var(--line);
+  box-shadow: 0 8px 26px rgba(0, 0, 0, 0.35);
+}
+
+.navbar .nav-link,
+.navbar .navbar-brand,
+.navbar .dropdown-item {
+  color: var(--ink-strong) !important;
+}
+
+.navbar .dropdown-menu {
+  border-color: var(--line);
+  background: #1b1511;
+}
+
+.navbar .dropdown-item:hover,
+.navbar .dropdown-item:focus {
+  background: #322419;
+  color: #ffe2a3 !important;
+}
+
+.card {
+  border: 1px solid var(--line);
+  background: linear-gradient(180deg, rgba(39, 31, 24, 0.96) 0%, rgba(28, 21, 17, 0.98) 100%);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.32);
+  animation: panel-reveal 0.45s ease-out;
+  color: var(--ink-strong);
+}
+
+.card-header {
+  color: var(--gold-bright);
+  background: linear-gradient(180deg, #35281e 0%, #281e17 100%);
+  border-bottom: 1px solid var(--line);
+}
+
+.card-body,
+.card-body p,
+.card-body div,
+.card-body li,
+.card-body span,
+.card-body strong,
+.card-body ul,
+.card-body label {
+  color: var(--ink-strong);
+}
+
+.text-muted,
+small,
+label {
+  color: var(--ink-muted) !important;
+}
+
+.sidebar-section li,
+.sidebar-section .list-unstyled li,
+li {
+  color: var(--ink-strong);
+}
+
+a {
+  color: var(--gold-bright);
+}
+
+a:hover {
+  color: #efcb82;
+}
+
+.leader-badge {
+  display: inline-block;
+  padding: 0.15rem 0.6rem;
+  border-radius: 999px;
+  font-family: "Source Sans 3", "Segoe UI", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: #1a1208;
+  background: linear-gradient(180deg, #f0d487 0%, #c9952f 100%);
+  border: 1px solid #8f6420;
+  box-shadow: 0 0 14px rgba(210, 172, 91, 0.4);
+  vertical-align: middle;
+}
+
+.party-member-badge {
+  display: inline-block;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  font-family: "Source Sans 3", "Segoe UI", sans-serif;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.03em;
+  color: var(--ink-muted);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--line);
+  vertical-align: middle;
+}
+
+.character-card--leader .card-header {
+  background: linear-gradient(180deg, #4a3824 0%, #2d2118 100%);
+  box-shadow: inset 0 0 0 1px rgba(210, 172, 91, 0.25);
+}
+
+.navbar-brand--leader {
+  box-shadow: inset 0 -3px 0 var(--gold-bright);
+}
+
+.navbar-brand .leader-badge,
+.navbar-brand .party-member-badge {
+  display: block;
+  margin-top: 0.2rem;
+  width: fit-content;
+  margin-left: auto;
+  margin-right: auto;
+}
+
+.parameters-table {
+  border-color: var(--line);
+  color: var(--ink-strong);
+}
+
+.parameters-table thead th {
+  color: var(--gold-bright);
+  border-color: var(--line);
+  font-family: "Cinzel", Georgia, serif;
+  font-size: 0.82rem;
+  letter-spacing: 0.04em;
+}
+
+.parameters-table td,
+.parameters-table th {
+  border-color: var(--line);
+  padding: 0.3rem 0.5rem;
+  font-size: 0.9rem;
+}
+
+.parameters-table tbody tr:nth-child(even) {
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.character-profile-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.character-profile-header h1 {
+  margin: 0;
+}
+
+.character-profile-header--leader {
+  padding: 0.75rem 1rem;
+  border: 1px solid rgba(210, 172, 91, 0.35);
+  border-radius: 8px;
+  background: linear-gradient(90deg, rgba(210, 172, 91, 0.12) 0%, transparent 70%);
+}
+
+.badge-secondary {
+  color: #1d140b;
+  background-color: #d4b06f;
+}
+
+.btn-primary {
+  background: linear-gradient(180deg, #b58a42 0%, #8f672e 100%);
+  border-color: #7a5627;
+}
+
+.btn-primary:hover,
+.btn-primary:focus {
+  background: linear-gradient(180deg, #c29a50 0%, #9e7336 100%);
+  border-color: #8e652f;
+}
+
+.alert {
+  border: 1px solid var(--line);
+}
+
+.alert-success {
+  background: rgba(37, 86, 53, 0.25);
+  color: #bde8c8;
+}
+
+.alert-warning {
+  background: rgba(131, 89, 27, 0.25);
+  color: #ecd6a1;
+}
+
+.alert-danger {
+  background: rgba(143, 42, 31, 0.24);
+  color: #f0b5ad;
+}
+
+/* Lightweight chat box styling used in base template. */
+#chat-log {
+  width: min(100%, 520px);
+  margin: 0.75rem 0 0.25rem;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.55rem;
+  font-size: 0.92rem;
+  color: var(--ink-strong);
+  background: rgba(20, 16, 13, 0.92);
+}
+
+#chat-message-input {
+  width: min(100%, 520px);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  padding: 0.45rem 0.55rem;
+  color: var(--ink-strong);
+  background: rgba(20, 16, 13, 0.94);
+}
+
+#chat-message-submit {
+  margin-top: 0.4rem;
+}
+
+#chat-message-input:focus,
+#chat-log:focus {
+  outline: none;
+  border-color: var(--gold);
+  box-shadow: 0 0 0 0.2rem rgba(184, 138, 58, 0.2);
+}
+
+footer {
+  margin-top: 1rem;
+}
+
+@keyframes panel-reveal {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (max-width: 768px) {
+  .navbar-brand {
+    font-size: 1rem;
+  }
+
+  #chat-log,
+  #chat-message-input {
+    width: 100%;
+  }
+}

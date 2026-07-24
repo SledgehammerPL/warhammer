@@ -30,22 +30,127 @@ def index(request):
     current_adventure = None
     current_turn = None
 
+    equipped_weapon = None
+    equipped_ballistic_weapon = None
+    equipped_helmet = None
+    equipped_armour = None
+    equipped_boots = None
+    equipped_shield = None
+
     if you:
-        equipments = Equipment.objects.filter(owner=you).select_related('item')
+        all_equipments = Equipment.objects.filter(owner=you).select_related('item')
+
+        equipped_weapon = you.weapon
+        equipped_ballistic_weapon = you.ballistic_weapon
+        equipped_helmet = you.helmet
+        equipped_armour = you.armour
+        equipped_boots = you.boots
+        equipped_shield = you.shield
+
+        equipped_ids = [
+            e.id for e in [
+                equipped_weapon,
+                equipped_ballistic_weapon,
+                equipped_helmet,
+                equipped_armour,
+                equipped_boots,
+                equipped_shield,
+            ] if e
+        ]
+        equipments = all_equipments.exclude(id__in=equipped_ids)
         gold = you.get_current_gold() or 0
         spells = CharacterSpell.objects.filter(character=you).select_related('spell')
         current_adventure = Adventure.objects.filter(characters=you).order_by('-id').first()
         if current_adventure:
             current_turn = Turn.objects.filter(adventure=current_adventure).order_by('-turn_number').first()
 
+    parameters = you.get_parameter_totals() if you else {}
+
     context = {
         'equipments': equipments,
+        'parameters': parameters,
+        'equipped_weapon': equipped_weapon,
+        'equipped_ballistic_weapon': equipped_ballistic_weapon,
+        'equipped_helmet': equipped_helmet,
+        'equipped_armour': equipped_armour,
+        'equipped_boots': equipped_boots,
+        'equipped_shield': equipped_shield,
         'gold': gold,
         'spells': spells,
         'current_adventure': current_adventure,
         'current_turn': current_turn,
     }
     return render(request, 'game/index.html', context)
+
+
+@login_required
+@csrf_protect
+def equipment_rpc(request):
+    if request.method != 'POST':
+        return JsonResponse({'result': 'method_not_allowed'}, status=405)
+
+    character = request.user.selected_character
+    if not character:
+        return JsonResponse({'result': 'no_character'}, status=400)
+
+    action = request.POST.get('action')
+
+    slot_map = {
+        'weapon': 'weapon',
+        'ballistic_weapon': 'ballistic_weapon',
+        'helmet': 'helmet',
+        'armour': 'armour',
+        'boots': 'boots',
+        'shield': 'shield',
+    }
+
+    if action == 'equip':
+        equipment_id = request.POST.get('equipment_id')
+        if not equipment_id:
+            return JsonResponse({'result': 'missing_equipment_id'}, status=400)
+        try:
+            equipment = Equipment.objects.select_related('item').get(id=int(equipment_id), owner=character)
+        except (ValueError, TypeError):
+            return JsonResponse({'result': 'bad_equipment_id'}, status=400)
+        except Equipment.DoesNotExist:
+            return JsonResponse({'result': 'not_found'}, status=404)
+
+        item = equipment.item
+        updated = False
+        if item.is_weapon:
+            character.weapon = equipment
+            updated = True
+        if item.is_ballistic_weapon:
+            character.ballistic_weapon = equipment
+            updated = True
+        if item.is_helmet:
+            character.helmet = equipment
+            updated = True
+        if item.is_armour:
+            character.armour = equipment
+            updated = True
+        if item.is_boots:
+            character.boots = equipment
+            updated = True
+        if item.is_shield:
+            character.shield = equipment
+            updated = True
+
+        if updated:
+            character.save()
+            return JsonResponse({'result': 'ok'})
+        return JsonResponse({'result': 'no_slot'})
+
+    if action == 'unequip':
+        slot = request.POST.get('slot')
+        field_name = slot_map.get(slot)
+        if not field_name:
+            return JsonResponse({'result': 'unknown_slot'}, status=400)
+        setattr(character, field_name, None)
+        character.save(update_fields=[field_name])
+        return JsonResponse({'result': 'ok'})
+
+    return JsonResponse({'result': 'unknown_action'}, status=400)
 
 @login_required
 def create_character(request):
@@ -172,22 +277,9 @@ def character_profile(request, character):
         you = Character.objects.get(pk=character, player=request.user)
         other_party_members = Character.objects.filter(leader =you.leader).exclude(id=you.id)
         equipments = Equipment.objects.filter(owner = you)
-        parameters = {
-                'wounds' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'W').aggregate(value=Sum('value')),
-                'move' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'M').aggregate(value=Sum('value')),
-                'weapon_skill' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'WS').aggregate(value=Sum('value')),
-                'ballistic_skill' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'BS').aggregate(value=Sum('value')),
-                'strength' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'S').aggregate(value=Sum('value')),
-                'toughness' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'T').aggregate(value=Sum('value')),
-                'initiative' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'I').aggregate(value=Sum('value')),
-                'attacks' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'A').aggregate(value=Sum('value')),
-                'luck' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'L').aggregate(value=Sum('value')),
-                'willpower' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'WP').aggregate(value=Sum('value')),
-                'pinning' :  CharacterParameter.objects.filter(character=you, parameter__short_name = 'EP').aggregate(value=Sum('value')),
-                }
         context = {
            'character' : you,
-           'parameters' : parameters,
+           'parameters' : you.get_parameter_totals(),
            'other_party_members' : other_party_members,
            'equipments' : equipments,
         }
@@ -231,7 +323,10 @@ def choose_leader(request):
             form = PartyLeaderForm(request.POST)
 
             if form.is_valid():
-                you.leader = form.cleaned_data['leader']
+                leader = form.cleaned_data['leader']
+                you.leader = leader
+                you.location = leader.location
+                you.ticks = leader.ticks
                 you.save()
                 request.session['leader']=you == you.leader
                 request.session['leader_name']= you.leader.name

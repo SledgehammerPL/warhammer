@@ -1,0 +1,6 @@
+{% load i18n %}
+{% if character.is_leader %}
+<span class="leader-badge" title="{% trans 'Party leader' %}">&#9733; {% trans "Leader" %}</span>
+{% else %}
+<span class="party-member-badge" title="{% trans 'Party member' %}">{% trans "Member" %} — {{ character.leader.name }}</span>
+{% endif %}

@@ -22,32 +22,39 @@
     <div class="container">
 <div class="row justify-content-center">
   <div class="col-12">
-    <h1 class="mt-2">{{ character.name }}</h1>
-    <h4>{{ character.warrior_type }} ({{ character.warrior_type.race}})</h4>
-    <div>{% if character.leader == character %}{% trans "Leader" %}{% else %}{% trans "Member" %}{% endif %} {% trans "of" %} {{ character.leader }}'s {% trans "Party" %}{% if other_party_members %} {% trans "with" %} 
+    <div class="character-profile-header{% if character.is_leader %} character-profile-header--leader{% endif %}">
+      <h1 class="mt-2">{{ character.name }}</h1>
+      {% include 'game/leader_badge.html' with character=character %}
+    </div>
+    <div><strong>{% trans "Name" %}:</strong> {{ character.name }}</div>
+    <div><strong>{% trans "Warrior type" %}:</strong> {{ character.warrior_type }}</div>
+    <div><strong>{% trans "Race" %}:</strong> {{ character.warrior_type.race }}</div>
+    <div><strong>{% trans "Battle Level" %}:</strong> {{ character.battle_level }}</div>
+    <div>
+      {% if character.is_leader %}
+        {% trans "Leader of own party" %}
+      {% else %}
+        {% trans "Member of" %} {{ character.leader }}'s {% trans "Party" %}
+      {% endif %}
+      {% if other_party_members %} {% trans "with" %}
       {% for member in other_party_members %}
       {{ member }},
       {% endfor %}{% endif %}
     </div>
     <hr class="mt-0 mb-4">
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Wounds" %}:</label>{{ parameters.wounds.value }}</div>
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Move" %}:</label> {{ parameters.move.value }}</div>
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Weapon Skill" %}:</label> {{ parameters.weapon_skill.value }}</div>
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Ballistic Skill" %}:</label> {{ parameters.ballistic_skill.value }}+<span class="col-1"></span><button type="button" class="btn btn-primary" onclick="shoot({{ parameters.ballistic_skill.value }})">{% trans "SHOOT" %}</button></div>
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Strength" %}:</label> {{ parameters.strength.value }}</div>
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Toughness" %}:</label> {{ parameters.toughness.value }}</div>
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Initiative" %}:</label> {{ parameters.initiative.value }}</div>
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Attacks" %}:</label> {{ parameters.attacks.value }}</div>
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Luck" %}:</label> {{ parameters.luck.value }}</div>
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Willpower" %}:</label> {{ parameters.willpower.value }}</div>
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Equipment" %}:</label><ul>
+    <h5 class="mb-3">{% trans "Characteristics" %}</h5>
+    {% include 'game/parameters_table.html' %}
+    <div class="mt-3"><label class="col-4 col-sm-3 col-md-2">{% trans "Equipment" %}:</label><ul>
       {% for equipment in equipments %}
-      <li>{{ equipment }} </li>
+      <li data-toggle="tooltip" data-placement="right" title="{{ equipment.item.description }}">{{ equipment }}</li>
       {% endfor %}
       </ul>
     </div>
-    <div><label class="col-4 col-sm-3 col-md-2">{% trans "Pinning" %}:</label> {% if parameters.pinning.value > 0 %}{% blocktrans with pinning=parameters.pinning.value %}Breaks on a roll of {{ pinning }}+{% endblocktrans %}{% else %}{% trans "Automatic pinning" %}{% endif %}</div>
-
+    <div class="mt-2">
+      <label class="col-4 col-sm-3 col-md-2">{% trans "Ballistic Skill" %}:</label>
+      {{ parameters.ballistic_skill.value }}
+      <button type="button" class="btn btn-primary btn-sm ml-2" onclick="shoot({{ parameters.ballistic_skill.value }})">{% trans "SHOOT" %}</button>
+    </div>
   </div>
 </div>
 {% endblock %}

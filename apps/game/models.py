@@ -32,6 +32,7 @@ class WarriorType(models.Model):
     description = models.TextField() #tu pisać skąd lub na co
     race = models.ForeignKey(Race, on_delete=models.RESTRICT)
     alehouse_roll = models.CharField(max_length=10, default='2D6')
+    can_cast_spells = models.BooleanField(default=False)
     def __str__(self):
         return "{}".format(self.name)
 
@@ -82,17 +83,25 @@ class Shop(models.Model):
     def __str__(self):
         return "{}".format(self.name)
 
+
 class Item(models.Model):
     code = models.CharField(max_length=100, unique=True)
     name = models.CharField(max_length=100)
     description = models.TextField()
     restriction = models.ManyToManyField(WarriorType)
-    available_in = models.ForeignKey(Shop, on_delete=models.RESTRICT,null=True)
+    available_in = models.ForeignKey(Shop, on_delete=models.RESTRICT, null=True, blank=True)
     chance_to_be_in_shop = models.PositiveIntegerField(default=18)
     buy_price = models.PositiveIntegerField(default=100000)
     sell_price = models.PositiveIntegerField(default=0)
     command = models.CharField(max_length=256, blank=True)
     initial_for = models.ManyToManyField(WarriorType, blank=True, related_name='initial_items')
+    is_weapon = models.BooleanField(default=False)
+    is_ballistic_weapon = models.BooleanField(default=False)
+    is_helmet = models.BooleanField(default=False)
+    is_armour = models.BooleanField(default=False)
+    is_boots = models.BooleanField(default=False)
+    is_shield = models.BooleanField(default=False)
+    durability = models.ForeignKey('Durability', on_delete=models.SET_NULL, null=True, blank=True)
     def __str__(self):
         return "{} ({})".format(self.name, self.code)
   
@@ -130,6 +139,44 @@ class Character(models.Model):
     location = models.ForeignKey(Location, on_delete=models.RESTRICT, default=0)
     active_day = models.BooleanField(default=False)
     ticks = models.PositiveIntegerField(default=1)
+    weapon = models.ForeignKey('Equipment', on_delete=models.SET_NULL, null=True, blank=True, related_name='as_weapon_for')
+    ballistic_weapon = models.ForeignKey('Equipment', on_delete=models.SET_NULL, null=True, blank=True, related_name='as_ballistic_weapon_for')
+    helmet = models.ForeignKey('Equipment', on_delete=models.SET_NULL, null=True, blank=True, related_name='as_helmet_for')
+    armour = models.ForeignKey('Equipment', on_delete=models.SET_NULL, null=True, blank=True, related_name='as_armour_for')
+    boots = models.ForeignKey('Equipment', on_delete=models.SET_NULL, null=True, blank=True, related_name='as_boots_for')
+    shield = models.ForeignKey('Equipment', on_delete=models.SET_NULL, null=True, blank=True, related_name='as_shield_for')
+
+    @property
+    def is_leader(self):
+        return self.leader_id == self.pk
+
+    def get_parameter_totals(self):
+        key_map = {
+            'W': 'wounds',
+            'M': 'move',
+            'WS': 'weapon_skill',
+            'BS': 'ballistic_skill',
+            'S': 'strength',
+            'T': 'toughness',
+            'I': 'initiative',
+            'A': 'attacks',
+            'L': 'luck',
+            'WP': 'willpower',
+            'EP': 'pinning',
+        }
+        totals = {
+            key: {'value': None}
+            for key in key_map.values()
+        }
+        rows = (
+            CharacterParameter.objects
+            .filter(character=self, parameter__short_name__in=key_map.keys())
+            .values('parameter__short_name')
+            .annotate(value=Sum('value'))
+        )
+        for row in rows:
+            totals[key_map[row['parameter__short_name']]] = {'value': row['value']}
+        return totals
 
     def get_current_gold(self):
         return Gold.objects.filter(owner=self).aggregate(suma=Sum('amount'))['suma']
@@ -199,6 +246,7 @@ class Equipment(models.Model):
     owner = models.ForeignKey(Character, on_delete = models.CASCADE)
     item = models.ForeignKey(Item, on_delete = models.RESTRICT)
     description = models.TextField() #tu pisać skąd lub na co
+    is_active = models.BooleanField(default=False)
 
     def __str__(self):
         return "{}".format(self.item.name)
@@ -210,7 +258,7 @@ class CharacterParameter(models.Model):
     value = models.IntegerField()
     description = models.CharField(max_length=256) 
 
-class SkillType(models.Model):
+class Durability(models.Model):
     code = models.CharField(max_length=10)
     name = models.CharField(max_length=256)
     description = models.TextField()
@@ -219,7 +267,7 @@ class SkillType(models.Model):
 
 class Skill(models.Model):
     name = models.CharField(max_length=256)
-    skill_type = models.ForeignKey(SkillType, on_delete = models.RESTRICT)
+    skill_type = models.ForeignKey(Durability, on_delete = models.RESTRICT)
     description = models.TextField() #tu pisać skąd lub na co
     restriction = models.ManyToManyField(WarriorType)
 
@@ -356,10 +404,25 @@ class Turn(models.Model):
         return "Turn {} (Adventure: {})".format(self.turn_number, self.adventure)
 
 
+class SpellType(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+    description = models.TextField(blank=True)
+
+    def __str__(self):
+        return self.name
+
+
 class Spell(models.Model):
     name = models.CharField(max_length=200)
     description = models.TextField()
     cost = models.PositiveIntegerField(default=0)
+    spell_type = models.ForeignKey(SpellType, on_delete=models.RESTRICT, null=True, blank=True)
+    characters = models.ManyToManyField(
+        'Character',
+        through='CharacterSpell',
+        related_name='known_spells',
+        blank=True,
+    )
 
     def __str__(self):
         return self.name

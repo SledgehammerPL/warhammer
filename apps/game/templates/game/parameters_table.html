@@ -1,0 +1,35 @@
+{% load i18n %}
+<table class="table table-sm table-dark parameters-table mb-0">
+  <thead>
+    <tr>
+      <th scope="col">{% trans "Stat" %}</th>
+      <th scope="col" class="text-right">{% trans "Value" %}</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr><td>{% trans "Wounds" %}</td><td class="text-right">{{ parameters.wounds.value|default:"—" }}</td></tr>
+    <tr><td>{% trans "Move" %}</td><td class="text-right">{{ parameters.move.value|default:"—" }}</td></tr>
+    <tr><td>{% trans "Weapon Skill" %}</td><td class="text-right">{{ parameters.weapon_skill.value|default:"—" }}</td></tr>
+    <tr><td>{% trans "Ballistic Skill" %}</td><td class="text-right">{{ parameters.ballistic_skill.value|default:"—" }}</td></tr>
+    <tr><td>{% trans "Strength" %}</td><td class="text-right">{{ parameters.strength.value|default:"—" }}</td></tr>
+    <tr><td>{% trans "Toughness" %}</td><td class="text-right">{{ parameters.toughness.value|default:"—" }}</td></tr>
+    <tr><td>{% trans "Initiative" %}</td><td class="text-right">{{ parameters.initiative.value|default:"—" }}</td></tr>
+    <tr><td>{% trans "Attacks" %}</td><td class="text-right">{{ parameters.attacks.value|default:"—" }}</td></tr>
+    <tr><td>{% trans "Luck" %}</td><td class="text-right">{{ parameters.luck.value|default:"—" }}</td></tr>
+    <tr><td>{% trans "Willpower" %}</td><td class="text-right">{{ parameters.willpower.value|default:"—" }}</td></tr>
+    <tr>
+      <td>{% trans "Pinning" %}</td>
+      <td class="text-right">
+        {% if parameters.pinning.value %}
+          {% if parameters.pinning.value > 0 %}
+            {% blocktrans with pinning=parameters.pinning.value %}{{ pinning }}+{% endblocktrans %}
+          {% else %}
+            {% trans "Automatic pinning" %}
+          {% endif %}
+        {% else %}
+          —
+        {% endif %}
+      </td>
+    </tr>
+  </tbody>
+</table>
