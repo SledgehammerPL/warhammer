@@ -1,11 +1,26 @@
-from .models import Character, Event
+from .models import Character, Event, EventTemplate
 from random import randint, randrange
+from django.db.models import Q
 from django.template import Template, Context
+import ast
 import json
+import operator
 import re
 import logging
 
 logger = logging.getLogger('error_logger')
+
+_DICE_RE = re.compile(r'(\d+)D(\d+)', re.IGNORECASE)
+_GOLD_CMD_RE = re.compile(r'^gold([+/=-])(.+)$', re.IGNORECASE)
+_EVENT_CMD_RE = re.compile(r'^event([+-])(.+)$', re.IGNORECASE)
+_AST_OPS = {
+    ast.Add: operator.add,
+    ast.Sub: operator.sub,
+    ast.Mult: operator.mul,
+    ast.Div: operator.floordiv,
+    ast.USub: operator.neg,
+    ast.UAdd: operator.pos,
+}
 
 
 def Roll(command):
@@ -23,6 +38,126 @@ def Roll(command):
         if result > sides_of_dice * no_of_dices:
             result = sides_of_dice * no_of_dices
         return result
+    return None
+
+
+def _eval_ast(node):
+    if isinstance(node, ast.Expression):
+        return _eval_ast(node.body)
+    if isinstance(node, ast.Constant):
+        if isinstance(node.value, (int, float)):
+            return int(node.value)
+        raise ValueError('unsupported constant')
+    if isinstance(node, ast.Num):  # pragma: no cover - py<3.8
+        return int(node.n)
+    if isinstance(node, ast.BinOp):
+        return _AST_OPS[type(node.op)](_eval_ast(node.left), _eval_ast(node.right))
+    if isinstance(node, ast.UnaryOp):
+        return _AST_OPS[type(node.op)](_eval_ast(node.operand))
+    raise ValueError('unsupported expression')
+
+
+def eval_amount(expr):
+    """Evaluate expressions like '40', '1D6*10', '200+1D3*200'."""
+    if expr is None:
+        return 0
+    text = str(expr).strip()
+    if not text:
+        return 0
+
+    def repl(match):
+        return str(Roll(match.group(0)))
+
+    replaced = _DICE_RE.sub(repl, text)
+    if not re.fullmatch(r'[\d\s+\-*/()]+', replaced):
+        raise ValueError('invalid amount expression: {!r}'.format(expr))
+    return int(_eval_ast(ast.parse(replaced, mode='eval')))
+
+
+def _split_commands(raw):
+    if not raw:
+        return []
+    if isinstance(raw, list):
+        return [part.strip() for part in raw if str(part).strip()]
+    return [part.strip() for part in str(raw).split(';') if part.strip()]
+
+
+def execute_event_commands(character, commands, reason='Event'):
+    """Apply event command tokens (gold+/-, event+/-, ...)."""
+    for raw in _split_commands(commands):
+        try:
+            _execute_single_command(character, raw, reason)
+        except Exception:
+            logger.exception('Failed to execute event command %r for %s', raw, character)
+
+
+def _execute_single_command(character, command, reason):
+    cmd = command.strip()
+    if not cmd:
+        return
+
+    gold_match = _GOLD_CMD_RE.match(cmd)
+    if gold_match:
+        op, expr = gold_match.group(1), gold_match.group(2)
+        why = '{}: {}'.format(reason, cmd)
+        current = character.get_current_gold() or 0
+        if op == '+':
+            character.add_gold(eval_amount(expr), why)
+        elif op == '-':
+            character.remove_gold(eval_amount(expr), why)
+        elif op == '=':
+            target = eval_amount(expr)
+            if current > target:
+                character.remove_gold(current - target, why)
+            elif current < target:
+                character.add_gold(target - current, why)
+        elif op == '/':
+            divisor = eval_amount(expr)
+            if divisor <= 0:
+                raise ValueError('gold divisor must be > 0')
+            keep = current // divisor
+            if current > keep:
+                character.remove_gold(current - keep, why)
+        return
+
+    event_match = _EVENT_CMD_RE.match(cmd)
+    if event_match:
+        # Party travel modifiers must run once for the party (leader only).
+        if character.leader_id != character.pk:
+            return
+        delta = eval_amount(event_match.group(2))
+        if event_match.group(1) == '-':
+            delta = -delta
+        _apply_party_event_delta(character, delta)
+        return
+
+    logger.error('Unsupported event command: %r', cmd)
+
+
+def _apply_party_event_delta(leader, delta):
+    if delta > 0:
+        for _ in range(delta):
+            event_roll = int('{}{}'.format(Roll('1D6'), Roll('1D6')))
+            try:
+                template = EventTemplate.objects.get(number=event_roll, event_type__name='Hazards')
+            except EventTemplate.DoesNotExist:
+                logger.error('No Hazards event for roll %s', event_roll)
+                continue
+            add_party_event(template, leader)
+        return
+
+    if delta < 0:
+        # Cancel the newest unfinished hazard events for the whole party.
+        to_cancel = list(
+            Event.objects.filter(
+                character=leader,
+                done=False,
+                template__event_type__name='Hazards',
+            ).order_by('-created')[: abs(delta)]
+        )
+        for leader_pending in to_cancel:
+            root_id = leader_pending.leader_event_id or leader_pending.pk
+            Event.objects.filter(Q(pk=root_id) | Q(leader_event_id=root_id)).update(done=True)
 
 
 def warrior_event(character, event_template, tasks, leader_event=None, description_context={}, obligatory_commands=[]):
@@ -232,18 +367,19 @@ def add_party_event(event_template, leader):
     except json.JSONDecodeError:
         tasks = {}
 
-    try:  # wydruk i polecenia dla wszystkich bez losowania np. kazdy traci 20szt złota
-        party_context['party_print'] = tasks["0"]["party_print"]
-        party_context['party_command'] += tasks["0"]["party_command"]
-        party_obligatory_commands += tasks["0"]["party_command"].split(";")
-    except KeyError:
-        pass
-    try:  # wydruk i polecenia po losowaniu - dla wszystkich - jesli wypadnie 1 to kazdy traci 20szt złota.
-        party_context['party_print'] += tasks[party_1D6]["party_print"]
-        party_context['party_command'] += tasks[party_1D6]["party_command"]
-        party_obligatory_commands += tasks[party_1D6]["party_command"]
-    except KeyError:
-        pass
+    zero_task = tasks.get("0") or {}
+    if "party_print" in zero_task:
+        party_context['party_print'] = zero_task["party_print"]
+    if "party_command" in zero_task:
+        party_context['party_command'] += zero_task["party_command"]
+        party_obligatory_commands += _split_commands(zero_task["party_command"])
+
+    rolled_task = tasks.get(party_1D6) or {}
+    if "party_print" in rolled_task:
+        party_context['party_print'] += rolled_task["party_print"]
+    if "party_command" in rolled_task:
+        party_context['party_command'] += rolled_task["party_command"]
+        party_obligatory_commands += _split_commands(rolled_task["party_command"])
     # --- najpierw leader
     leader_event = warrior_event(leader, event_template, tasks, None, party_context.copy(), party_obligatory_commands)
     leader_event.leader_event = leader_event

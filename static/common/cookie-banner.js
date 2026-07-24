@@ -12,6 +12,7 @@
     if (!banner) {
       return;
     }
+    banner.hidden = true;
     banner.style.display = "none";
   }
 
@@ -20,7 +21,16 @@
     if (!banner) {
       return;
     }
-    banner.style.display = "block";
+    banner.hidden = false;
+    banner.style.display = "";
+  }
+
+  function hasConsent() {
+    try {
+      return window.localStorage.getItem(STORAGE_KEY) === "1";
+    } catch (err) {
+      return false;
+    }
   }
 
   window.nk_hideCookieBanner = function () {
@@ -32,18 +42,17 @@
     hideBanner();
   };
 
-  document.addEventListener("DOMContentLoaded", function () {
-    var accepted = "0";
-    try {
-      accepted = window.localStorage.getItem(STORAGE_KEY) || "0";
-    } catch (err) {
-      accepted = "0";
-    }
-
-    if (accepted === "1") {
+  function init() {
+    if (hasConsent()) {
       hideBanner();
     } else {
       showBanner();
     }
-  });
+  }
+
+  if (document.readyState === "loading") {
+    document.addEventListener("DOMContentLoaded", init);
+  } else {
+    init();
+  }
 })();

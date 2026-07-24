@@ -11,7 +11,7 @@ from django.contrib import messages
 from channels.layers import get_channel_layer
 from asgiref.sync import async_to_sync
 from django.template import Template, Context
-from .functions import add_party_event, add_warrior_event, Roll
+from .functions import add_party_event, add_warrior_event, execute_event_commands, Roll
 from django.views.decorators.csrf import csrf_protect
 
 import logging
@@ -254,7 +254,27 @@ def show_event(request):
             for q, v in form.data.items():
                 if q.startswith('btn_'):
                     messages.success(request, commands['conditional'][v]['choice_print'])
-            #Tu powinny być wykonane komendy (w stylu dodaj/odejmij gold itp)
+
+            reason = '{} {}'.format(event.template.number, event.template.title)
+            execute_event_commands(you, commands.get('obligatory', []), reason)
+
+            selected_option = form.cleaned_data.get('option')
+            if selected_option and commands.get('alternative', {}).get('party_option'):
+                option_spec = commands['alternative']['party_option'].get(selected_option, {})
+                execute_event_commands(you, option_spec.get('option_command', []), reason)
+
+            for question, question_spec in commands.get('conditional', {}).items():
+                field_prefix = 'choice_{}_'.format(question.lower().replace(' ', '_'))
+                chosen = any(
+                    form.cleaned_data.get(name)
+                    for name in form.cleaned_data
+                    if name.startswith(field_prefix)
+                )
+                if chosen:
+                    execute_event_commands(you, question_spec.get('choice_command', []), reason)
+                    if question_spec.get('choice_print'):
+                        messages.success(request, question_spec['choice_print'])
+
             event.done = True
             event.save()
             you.ticks += 1
@@ -371,7 +391,8 @@ def make_own_party(request):
 
 @login_required
 def begin_adventure(request):
-    companions = Character.objects.filter(leader=request.user.selected_character)
+    leader = request.user.selected_character
+    companions = Character.objects.filter(leader=leader)
     adventure_template = LocationTemplate.objects.get(pk=1)
     adventure = Location.objects.create(template = adventure_template, name="caves")
     adventure.name="caves {}".format(adventure.id)
@@ -381,13 +402,15 @@ def begin_adventure(request):
         companion.location = adventure
         companion.save()
 
+    notify_party_redirect(leader, '/')
     return redirect('/')
 
 
 @login_required
 def end_adventure(request):
-    companions = Character.objects.filter(leader=request.user.selected_character)
-    prev_location = request.user.selected_character.location
+    leader = request.user.selected_character
+    companions = Character.objects.filter(leader=leader)
+    prev_location = leader.location
     after_template = LocationTemplate.objects.get(pk=2)
     after = Location.objects.create(template = after_template, name="after adventure")
     after.name="after adventure {}".format(after.id)
@@ -398,6 +421,7 @@ def end_adventure(request):
 
     prev_location.delete()
 
+    notify_party_redirect(leader, '/')
     return redirect('/')
 
 @login_required

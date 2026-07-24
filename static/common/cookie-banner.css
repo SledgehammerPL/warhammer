@@ -10,6 +10,10 @@
   box-shadow: 0 -8px 24px rgba(0, 0, 0, 0.4);
 }
 
+.nk-cookie-banner[hidden] {
+  display: none !important;
+}
+
 .nk-cookie-banner a {
   color: #d8b06a;
   text-decoration: underline;

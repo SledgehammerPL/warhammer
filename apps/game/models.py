@@ -19,6 +19,16 @@ def _chat_group_name(raw_value):
         safe_value = "anonymous"
     return f"chat_{safe_value}"[:99]
 
+
+def notify_party_redirect(leader, path='/'):
+    """Ask all party browsers (WebSocket group) to navigate to path."""
+    if not leader or channel_layer is None:
+        return
+    async_to_sync(channel_layer.group_send)(
+        _chat_group_name(leader.name),
+        {"type": "redirect", "redirect": path},
+    )
+
 # Create your models here.
 class Race(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -318,10 +328,7 @@ class Event(models.Model):
 def create_event_trigger(sender, instance, *args, **kwargs):
     logger.error('event of {}'.format(instance.character))
     if Event.objects.filter(character=instance.character,done=False).count() == 1:
-        async_to_sync(channel_layer.group_send)(
-            _chat_group_name(instance.character.leader.name),
-            {"type": "redirect", "redirect": "/show_event/"},
-        )
+        notify_party_redirect(instance.character.leader, '/show_event/')
 
 post_save.connect(create_event_trigger, sender=Event)
 
