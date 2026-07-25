@@ -565,6 +565,7 @@ def visit_shop(request, shop_id):
         'shop' : shop,
         'possible_items' : possible_items,
         'user' : request.user,
+        'gold' : you.get_current_gold() or 0,
     }
     return render (request,'game/visit_shop.html', context)
 

@@ -201,6 +201,25 @@ a:hover {
   background: rgba(255, 255, 255, 0.03);
 }
 
+.shop-gold {
+  color: var(--ink-muted);
+  margin-bottom: 0.75rem;
+}
+
+.shop-gold #gold {
+  color: var(--gold-bright);
+}
+
+.shop-table .shop-item--unaffordable {
+  opacity: 0.45;
+  filter: grayscale(0.55);
+}
+
+.shop-table .shop-item--unaffordable .btn-success:disabled {
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
 .character-profile-header {
   display: flex;
   flex-wrap: wrap;
@@ -238,21 +257,40 @@ a:hover {
 
 .alert {
   border: 1px solid var(--line);
+  color: var(--ink-strong);
+  background: #2a2119;
 }
 
 .alert-success {
-  background: rgba(37, 86, 53, 0.25);
-  color: #bde8c8;
+  background: #1f3a28 !important;
+  border-color: #3d6b4a !important;
+  color: #d8f0df !important;
+}
+
+.alert-info,
+.alert-primary {
+  background: #1e2f3d !important;
+  border-color: #3d5d75 !important;
+  color: #d5e8f5 !important;
 }
 
 .alert-warning {
-  background: rgba(131, 89, 27, 0.25);
-  color: #ecd6a1;
+  background: #3a2c14 !important;
+  border-color: #7a5a22 !important;
+  color: #f3e2b0 !important;
 }
 
-.alert-danger {
-  background: rgba(143, 42, 31, 0.24);
-  color: #f0b5ad;
+.alert-danger,
+.alert-error {
+  background: #3a1c18 !important;
+  border-color: #7a3a32 !important;
+  color: #f5d0cb !important;
+}
+
+.alert-dark {
+  background: linear-gradient(180deg, rgba(48, 34, 24, 0.97) 0%, rgba(30, 21, 15, 0.98) 100%) !important;
+  border-color: #5c4431 !important;
+  color: #efe5d4 !important;
 }
 
 /* Lightweight chat box styling used in base template. */

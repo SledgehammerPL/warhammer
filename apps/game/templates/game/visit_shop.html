@@ -9,11 +9,40 @@ const boughtTemplate = "{% blocktrans %}You bought a __ITEM__ for __PRICE__ gold
 const soldTemplate = "{% blocktrans %}You sold a __ITEM__ for __PRICE__ gold{% endblocktrans %}";
 const notEnoughGoldMessage = "{% trans 'You do not have enough gold. Get out there!'|escapejs %}";
 
+function currentGold() {
+  var el = document.getElementById('gold');
+  return el ? parseInt(el.textContent, 10) || 0 : 0;
+}
+
+function refreshAffordability() {
+  var gold = currentGold();
+  document.querySelectorAll('tr[data-buy-price]').forEach(function (row) {
+    var price = parseInt(row.getAttribute('data-buy-price'), 10) || 0;
+    var available = row.getAttribute('data-available') === '1';
+    var canAfford = price <= gold;
+    row.classList.toggle('shop-item--unaffordable', !canAfford);
+
+    var buyBtn = row.querySelector('[id^="btnbuy"]');
+    var stockBtn = row.querySelector('[id^="notinstock"]');
+    if (buyBtn) {
+      buyBtn.style.display = canAfford && available ? 'inline' : 'none';
+      buyBtn.disabled = !canAfford;
+    }
+    if (stockBtn) {
+      stockBtn.style.display = canAfford && !available ? 'inline' : 'none';
+    }
+  });
+}
+
 function buy_item(element_id, item, price, shop) {
+  if (price > currentGold()) {
+    return;
+  }
   xhttp.onreadystatechange = function() {
     if (this.readyState == 4 && this.status == 200) {
       var data = JSON.parse(this.responseText);
-      document.getElementById('gold').innerHTML=data["gold"];
+      document.getElementById('gold').innerHTML = data["gold"];
+      refreshAffordability();
       if (data["result"]=="ok") {
         newMessage = document.createElement("div");
         newMessage.className = "alert alert-success alert-dismissible fade show";
@@ -41,7 +70,8 @@ function sell_item(element_id, item, price, shop) {
       if (data["result"]==0) {
         document.getElementById("btnsell"+element_id).style.display='none';
       }
-      document.getElementById('gold').innerHTML=data["gold"];
+      document.getElementById('gold').innerHTML = data["gold"];
+      refreshAffordability();
       newMessage = document.createElement("div");
       newMessage.className = "alert alert-success alert-dismissible fade show";
       newMessage.innerHTML = soldTemplate.replace('__ITEM__', data["item"]).replace('__PRICE__', data["price"]) + "<button type=\"button\" class=\"close\" data-dismiss=\"alert\" aria-label=\"Close\"><span aria-hidden=\"true\">&times;</span></button>";
@@ -57,6 +87,7 @@ function sell_item(element_id, item, price, shop) {
   xhttp.send("item="+item+"&price="+price+"&buyer="+shop);
 }
 
+document.addEventListener('DOMContentLoaded', refreshAffordability);
 </script>
 {% endblock %}
 
@@ -66,13 +97,31 @@ function sell_item(element_id, item, price, shop) {
 <div class="row justify-content-center">
   <div class="col-12">
     <h1 class="mt-2">{{ shop.name }}</h1>
-    <table class="table table-hover">
+    <p class="shop-gold">{% trans "Gold" %}: <span id="gold" class="font-weight-bold">{{ gold }}</span></p>
+    <table class="table table-hover shop-table">
       <thead>
         <tr><th scope="col">{% trans "EQUIPMENT" %}</th><th scope="col">{% trans "COST" %}<br>({% trans "BUY" %})</th><th scope="col">{% trans "COST" %}<br>({% trans "SELL" %})</th><th scope="col">{% trans "DESCRIPTION" %}<th></th></tr>
       </thead>
       <tbody>
       {% for item in possible_items %}
-      <tr scope="row"><td>{{ item.name }}</td><td style="text-align:right">{{ item.buy_price }}</td><td style="text-align:right">{{ item.sell_price }}</td><td>{{ item.description }}. {% trans "Only for:" %} {{ item.restriction.all|join:", " }} <br><button id="btn{{forloop.counter}}" type="button" class="btn btn-info" onclick="this.style.visibility='hidden';{% if item.available %}document.getElementById('btnbuy{{forloop.counter}}').style.visibility='visible';{% else %}document.getElementById('notinstock{{forloop.counter}}').style.visibility='visible';{% endif %}">{% trans "Check availability" %}</button> <button id="btnsell{{forloop.counter}}" style="display:{% if item.to_sell %}inline{% else %}none{% endif %}" type="button" class="btn btn-warning" onclick="sell_item({{ forloop.counter }},'{{ item.code }}', {{ item.sell_price }},'{{ shop.name }}')">{% trans "SELL" %}</button> {% if item.available %}<button style="visibility:hidden" id="btnbuy{{forloop.counter}}" type="button" class="btn btn-success" onclick="buy_item({{ forloop.counter }},'{{ item.code}}',{{ item.buy_price }},'{{ shop.name }}')">{% trans "BUY" %}</button>{% else %}<button style="visibility:hidden" id="notinstock{{forloop.counter}}" type="button" class="btn btn-danger" disabled>{% trans "NOT IN STOCK" %}</button>{% endif %}</td></tr>
+      <tr scope="row"
+          data-buy-price="{{ item.buy_price }}"
+          data-available="{% if item.available %}1{% else %}0{% endif %}"
+          {% if item.buy_price > gold %}class="shop-item--unaffordable"{% endif %}>
+        <td>{{ item.name }}</td>
+        <td style="text-align:right">{{ item.buy_price }}</td>
+        <td style="text-align:right">{{ item.sell_price }}</td>
+        <td>
+          {{ item.description }}. {% trans "Only for:" %} {{ item.restriction.all|join:", " }}
+          <br>
+          <button id="btnsell{{forloop.counter}}" style="display:{% if item.to_sell %}inline{% else %}none{% endif %}" type="button" class="btn btn-warning" onclick="sell_item({{ forloop.counter }},'{{ item.code }}', {{ item.sell_price }},'{{ shop.name }}')">{% trans "SELL" %}</button>
+          {% if item.available %}
+          <button id="btnbuy{{forloop.counter}}" type="button" class="btn btn-success" style="display:{% if item.buy_price <= gold %}inline{% else %}none{% endif %}" onclick="buy_item({{ forloop.counter }},'{{ item.code}}',{{ item.buy_price }},'{{ shop.name }}')">{% trans "BUY" %}</button>
+          {% else %}
+          <button id="notinstock{{forloop.counter}}" type="button" class="btn btn-danger" style="display:{% if item.buy_price <= gold %}inline{% else %}none{% endif %}" disabled>{% trans "NOT IN STOCK" %}</button>
+          {% endif %}
+        </td>
+      </tr>
       {% endfor %}
       </tbody>
   </table>
