@@ -15,6 +15,7 @@ Including another URLconf
 """
 from django.contrib import admin
 from django.urls import path
+from django.conf import settings
 from django.conf.urls import include
 
 urlpatterns = [
@@ -22,3 +23,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('', include('apps.game.urls')),
 ]
+
+# uvicorn/ASGI does not auto-serve static like runserver; nginx handles this in production
+if settings.DEBUG:
+    from django.contrib.staticfiles.urls import staticfiles_urlpatterns
+    urlpatterns += staticfiles_urlpatterns()
