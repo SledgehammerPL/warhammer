@@ -190,6 +190,14 @@
             </div>
           </div>
           {% endif %}
+          {% if current_adventure and request.user.selected_character.is_leader %}
+          <div class="mt-3">
+            <a href="/next_turn/" class="btn btn-primary btn-sm"
+               {% if current_turn and current_turn.power_reroll_pending %}aria-disabled="true" onclick="return false;" style="pointer-events:none;opacity:.65"{% endif %}>
+              {% trans "Next Turn" %}
+            </a>
+          </div>
+          {% endif %}
         </div>
       </div>
 

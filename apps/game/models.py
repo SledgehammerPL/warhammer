@@ -29,6 +29,51 @@ def notify_party_redirect(leader, path='/'):
         {"type": "redirect", "redirect": path},
     )
 
+
+# Item.command tokens like "Toughness+1; Movement-1" → Parameter.short_name deltas.
+# "=" assignments (e.g. Strength=4 on weapons) are weapon ratings, not character mods.
+_EQUIP_STAT_ALIASES = {
+    'toughness': 'T',
+    'strength': 'S',
+    'strenght': 'S',
+    'move': 'M',
+    'movement': 'M',
+    'weapon_skill': 'WS',
+    'ballistic_skill': 'BS',
+    'initiative': 'I',
+    'attacks': 'A',
+    'attack': 'A',
+    'luck': 'L',
+    'willpower': 'WP',
+    'wounds': 'W',
+    'pinning': 'EP',
+    'escape_pining': 'EP',
+}
+_EQUIP_STAT_MOD_RE = re.compile(r'^([A-Za-z_]+)\s*([+-])\s*(\d+)$')
+
+
+def parse_equipment_stat_modifiers(command):
+    """Parse additive item.command modifiers into {Parameter.short_name: delta}."""
+    mods = {}
+    if not command:
+        return mods
+    for part in str(command).split(';'):
+        part = part.strip()
+        if not part:
+            continue
+        match = _EQUIP_STAT_MOD_RE.match(part)
+        if not match:
+            continue
+        alias = match.group(1).lower()
+        short = _EQUIP_STAT_ALIASES.get(alias)
+        if not short:
+            continue
+        delta = int(match.group(3))
+        if match.group(2) == '-':
+            delta = -delta
+        mods[short] = mods.get(short, 0) + delta
+    return mods
+
 # Create your models here.
 class Race(models.Model):
     name = models.CharField(max_length=100, unique=True)
@@ -186,6 +231,26 @@ class Character(models.Model):
         )
         for row in rows:
             totals[key_map[row['parameter__short_name']]] = {'value': row['value']}
+
+        equipped_ids = [
+            eid for eid in (
+                self.weapon_id,
+                self.ballistic_weapon_id,
+                self.helmet_id,
+                self.armour_id,
+                self.boots_id,
+                self.shield_id,
+            )
+            if eid
+        ]
+        if equipped_ids:
+            for equipment in Equipment.objects.filter(id__in=equipped_ids).select_related('item'):
+                for short, delta in parse_equipment_stat_modifiers(equipment.item.command).items():
+                    key = key_map.get(short)
+                    if not key or not delta:
+                        continue
+                    current = totals[key]['value']
+                    totals[key]['value'] = delta if current is None else current + delta
         return totals
 
     def get_current_gold(self):
@@ -382,6 +447,62 @@ class Adventure(models.Model):
             return self.template.name
         return "Adventure {}".format(self.id)
 
+    @classmethod
+    def begin_adventure(cls, leader):
+        """Pick a random AdventureTemplate, create Adventure for the party, start turn 1."""
+        template = AdventureTemplate.objects.order_by('?').first()
+        if template is None:
+            raise AdventureTemplate.DoesNotExist('No AdventureTemplate available')
+
+        adventure = cls.objects.create(template=template, leader=leader)
+
+        companions = Character.objects.filter(leader=leader).order_by('id')
+        AdventureCharacter.objects.bulk_create([
+            AdventureCharacter(adventure=adventure, character=companion, order=order)
+            for order, companion in enumerate(companions)
+        ])
+
+        adventure.begin_turn()
+        return adventure
+
+    def get_power_reroll_character(self):
+        """Wizard in the party decides power re-roll; otherwise the leader."""
+        wizard = (
+            self.characters
+            .filter(warrior_type__can_cast_spells=True)
+            .order_by('adventurecharacter__order', 'id')
+            .first()
+        )
+        return wizard or self.leader
+
+    def begin_turn(self):
+        """Create next Turn with rolled power_level; next_character is the party leader."""
+        from random import randint
+
+        last = self.turns.order_by('-turn_number').first()
+        turn_number = (last.turn_number + 1) if last else 1
+        power_level = randint(1, 6)
+        turn = Turn.objects.create(
+            adventure=self,
+            turn_number=turn_number,
+            power_level=power_level,
+            next_character=self.leader,
+        )
+        if power_level == 1:
+            turn.power_reroll_pending = True
+            turn.power_reroll_for = self.get_power_reroll_character()
+            turn.save(update_fields=['power_reroll_pending', 'power_reroll_for'])
+        return turn
+
+    def end_turn(self):
+        """Finish the current turn. Placeholder for future cleanup."""
+        return self.turns.order_by('-turn_number').first()
+
+    def next_turn(self):
+        """End current turn and start the next one."""
+        self.end_turn()
+        return self.begin_turn()
+
 
 class AdventureCharacter(models.Model):
     adventure = models.ForeignKey(Adventure, on_delete=models.CASCADE)
@@ -403,12 +524,45 @@ class Turn(models.Model):
         null=True, blank=True,
         related_name='next_turns',
     )
+    power_reroll_pending = models.BooleanField(default=False)
+    power_reroll_for = models.ForeignKey(
+        Character,
+        on_delete=models.SET_NULL,
+        null=True, blank=True,
+        related_name='power_reroll_turns',
+    )
 
     class Meta:
         ordering = ['turn_number']
 
     def __str__(self):
         return "Turn {} (Adventure: {})".format(self.turn_number, self.adventure)
+
+    def resolve_power_reroll(self, accept_reroll):
+        """Yes → re-roll power once; No → keep 1.
+        Unexpected dungeon event on No, or if the re-roll is also 1.
+        Returns True when an unexpected event was triggered.
+        """
+        from random import randint
+
+        if not self.power_reroll_pending:
+            return False
+
+        unexpected = False
+        if accept_reroll:
+            self.power_level = randint(1, 6)
+            unexpected = self.power_level == 1
+        else:
+            unexpected = True
+
+        self.power_reroll_pending = False
+        self.power_reroll_for = None
+        self.save(update_fields=['power_level', 'power_reroll_pending', 'power_reroll_for'])
+
+        if unexpected:
+            from apps.game.functions import roll_unexpected_dungeon_event
+            roll_unexpected_dungeon_event(self.adventure.leader)
+        return unexpected
 
 
 class SpellType(models.Model):

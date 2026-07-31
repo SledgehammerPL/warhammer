@@ -293,6 +293,67 @@ a:hover {
   color: #efe5d4 !important;
 }
 
+.modal-content {
+  background: linear-gradient(180deg, rgba(39, 31, 24, 0.98) 0%, rgba(22, 16, 12, 0.99) 100%);
+  border: 1px solid var(--line);
+  color: var(--ink-strong);
+  box-shadow: 0 18px 40px rgba(0, 0, 0, 0.55);
+}
+
+.modal-header {
+  border-bottom: 1px solid var(--line);
+  background: linear-gradient(180deg, #35281e 0%, #281e17 100%);
+}
+
+.modal-title {
+  color: var(--gold-bright);
+  font-family: "Cinzel", Georgia, serif;
+}
+
+.modal-body,
+.modal-body p,
+.modal-body label,
+.modal-body .form-group,
+.modal-body .form-check-label,
+.modal-body .asteriskField,
+.modal-footer {
+  color: var(--ink-strong);
+}
+
+.modal-body .text-muted,
+.modal-body small {
+  color: var(--ink-muted) !important;
+}
+
+.modal-footer {
+  border-top: 1px solid var(--line);
+  background: rgba(20, 16, 13, 0.85);
+}
+
+.modal-body .form-control,
+.modal-body select.form-control,
+.modal-body textarea.form-control {
+  color: var(--ink-strong);
+  background: rgba(20, 16, 13, 0.94);
+  border-color: var(--line);
+}
+
+.modal-body .form-control:focus {
+  color: var(--ink-strong);
+  background: rgba(28, 21, 17, 0.98);
+  border-color: var(--gold);
+  box-shadow: 0 0 0 0.2rem rgba(184, 138, 58, 0.2);
+}
+
+.modal-body .custom-control-label,
+.modal-body .form-check-label {
+  color: var(--ink-strong) !important;
+}
+
+.modal-backdrop.show {
+  opacity: 0.72;
+}
+
 /* Lightweight chat box styling used in base template. */
 #chat-log {
   width: min(100%, 520px);

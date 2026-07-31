@@ -63,6 +63,12 @@ def index(request):
         current_adventure = Adventure.objects.filter(characters=you).order_by('-id').first()
         if current_adventure:
             current_turn = Turn.objects.filter(adventure=current_adventure).order_by('-turn_number').first()
+            if (
+                current_turn
+                and current_turn.power_reroll_pending
+                and current_turn.power_reroll_for_id == you.id
+            ):
+                return redirect('/power_reroll/')
 
     parameters = you.get_parameter_totals() if you else {}
 
@@ -392,15 +398,105 @@ def make_own_party(request):
 @login_required
 def begin_adventure(request):
     leader = request.user.selected_character
+    if not leader or not leader.is_leader:
+        messages.error(request, 'Only the party leader can begin an adventure.')
+        return redirect('/')
+
     companions = Character.objects.filter(leader=leader)
     adventure_template = LocationTemplate.objects.get(pk=1)
-    adventure = Location.objects.create(template = adventure_template, name="caves")
-    adventure.name="caves {}".format(adventure.id)
-    adventure.save()
+    adventure_location = Location.objects.create(template=adventure_template, name="caves")
+    adventure_location.name = "caves {}".format(adventure_location.id)
+    adventure_location.save()
 
     for companion in companions:
-        companion.location = adventure
+        companion.location = adventure_location
         companion.save()
+
+    try:
+        adventure = Adventure.begin_adventure(leader)
+    except AdventureTemplate.DoesNotExist:
+        messages.error(request, 'No adventure templates available.')
+        return redirect('/')
+
+    turn = adventure.turns.order_by('-turn_number').first()
+    if turn and turn.power_reroll_pending:
+        notify_party_redirect(leader, '/power_reroll/')
+        return redirect('/power_reroll/')
+
+    notify_party_redirect(leader, '/')
+    return redirect('/')
+
+
+@login_required
+def power_reroll(request):
+    you = request.user.selected_character
+    if not you:
+        return redirect('/')
+
+    adventure = Adventure.objects.filter(characters=you).order_by('-id').first()
+    if not adventure:
+        return redirect('/')
+
+    turn = (
+        Turn.objects
+        .filter(adventure=adventure, power_reroll_pending=True)
+        .select_related('power_reroll_for')
+        .order_by('-turn_number')
+        .first()
+    )
+    if not turn:
+        return redirect('/')
+
+    if turn.power_reroll_for_id != you.id:
+        messages.info(
+            request,
+            'Waiting for {} to decide whether to re-roll power level.'.format(
+                turn.power_reroll_for.name if turn.power_reroll_for_id else 'party'
+            ),
+        )
+        return redirect('/')
+
+    question = 'Power level is 1. Re-roll power level?'
+    if request.method == 'POST':
+        form = YesNoForm(request.POST, question=question)
+        if form.is_valid():
+            accept = form.cleaned_data['answer'] == 'True'
+            unexpected = turn.resolve_power_reroll(accept)
+            if accept and not unexpected:
+                messages.success(request, 'New power level: {}.'.format(turn.power_level))
+            if unexpected:
+                messages.warning(request, 'Unexpected event! Power level: {}.'.format(turn.power_level))
+                notify_party_redirect(adventure.leader, '/show_event/')
+                return redirect('/show_event/')
+            notify_party_redirect(adventure.leader, '/')
+            return redirect('/')
+    else:
+        form = YesNoForm(question=question)
+
+    return render(request, 'game/simple_form.html', {'form': form})
+
+
+@login_required
+def next_turn(request):
+    leader = request.user.selected_character
+    if not leader or not leader.is_leader:
+        messages.error(request, 'Only the party leader can advance the turn.')
+        return redirect('/')
+
+    adventure = Adventure.objects.filter(leader=leader).order_by('-id').first()
+    if not adventure:
+        messages.error(request, 'No active adventure.')
+        return redirect('/')
+
+    current = adventure.turns.order_by('-turn_number').first()
+    if current and current.power_reroll_pending:
+        messages.info(request, 'Resolve the power re-roll first.')
+        return redirect('/power_reroll/')
+
+    turn = adventure.next_turn()
+    if turn.power_reroll_pending:
+        notify_party_redirect(leader, '/power_reroll/')
+        return redirect('/power_reroll/')
 
     notify_party_redirect(leader, '/')
     return redirect('/')

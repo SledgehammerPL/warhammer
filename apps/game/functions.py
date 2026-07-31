@@ -1,6 +1,6 @@
-from .models import Character, Event, EventTemplate
+from .models import Character, Event, EventTemplate, CharacterParameter, Parameter
 from random import randint, randrange
-from django.db.models import Q
+from django.db.models import Q, Sum
 from django.template import Template, Context
 import ast
 import json
@@ -13,6 +13,30 @@ logger = logging.getLogger('error_logger')
 _DICE_RE = re.compile(r'(\d+)D(\d+)', re.IGNORECASE)
 _GOLD_CMD_RE = re.compile(r'^gold([+/=-])(.+)$', re.IGNORECASE)
 _EVENT_CMD_RE = re.compile(r'^event([+-])(.+)$', re.IGNORECASE)
+_DUNGEON_EVENT_CMD_RE = re.compile(r'^dungeon_event([+-])(.+)$', re.IGNORECASE)
+_WOUNDS_CMD_RE = re.compile(r'^(?:heal_)?wounds([+/=-])(.+)$', re.IGNORECASE)
+_STAT_CMD_RE = re.compile(
+    r'^(toughness|strength|strenght|weapon_skill|ballistic_skill|initiative|attacks|luck|willpower|move|movement)'
+    r'([+/=-])(.+)$',
+    re.IGNORECASE,
+)
+_ITEM_TREASURE_CMD_RE = re.compile(r'^(?:item_treasure|treasure)([+-])(.+)$', re.IGNORECASE)
+_PARTY_GOLD_CMD_RE = re.compile(r'^party_gold([+/=-])(.+)$', re.IGNORECASE)
+_SCORPION_CMD_RE = re.compile(r'^scorpion_swarm$', re.IGNORECASE)
+_GOLD_DIGGER_CURSE_RE = re.compile(r'^gold_digger_curse$', re.IGNORECASE)
+_STAT_SHORT = {
+    'toughness': 'T',
+    'strength': 'S',
+    'strenght': 'S',
+    'weapon_skill': 'WS',
+    'ballistic_skill': 'BS',
+    'initiative': 'I',
+    'attacks': 'A',
+    'luck': 'L',
+    'willpower': 'WP',
+    'move': 'M',
+    'movement': 'M',
+}
 _AST_OPS = {
     ast.Add: operator.add,
     ast.Sub: operator.sub,
@@ -131,7 +155,147 @@ def _execute_single_command(character, command, reason):
         _apply_party_event_delta(character, delta)
         return
 
+    dungeon_event_match = _DUNGEON_EVENT_CMD_RE.match(cmd)
+    if dungeon_event_match:
+        if character.leader_id != character.pk:
+            return
+        delta = eval_amount(dungeon_event_match.group(2))
+        if dungeon_event_match.group(1) == '-':
+            delta = -delta
+        if delta > 0:
+            for _ in range(delta):
+                roll_unexpected_dungeon_event(character)
+        elif delta < 0:
+            to_cancel = list(
+                Event.objects.filter(
+                    character=character,
+                    done=False,
+                    template__event_type__name='Dungeon Events',
+                ).order_by('-created')[: abs(delta)]
+            )
+            for pending in to_cancel:
+                root_id = pending.leader_event_id or pending.pk
+                Event.objects.filter(Q(pk=root_id) | Q(leader_event_id=root_id)).update(done=True)
+        return
+
+    wounds_match = _WOUNDS_CMD_RE.match(cmd)
+    if wounds_match:
+        op, expr = wounds_match.group(1), wounds_match.group(2)
+        why = '{}: {}'.format(reason, cmd)
+        amount = eval_amount(expr)
+        if op == '+':
+            _apply_wounds_delta(character, amount, why)
+        elif op == '-':
+            _apply_wounds_delta(character, -amount, why)
+        elif op == '=':
+            current = (
+                CharacterParameter.objects
+                .filter(character=character, parameter__short_name='W')
+                .aggregate(total=Sum('value'))['total']
+            ) or 0
+            _apply_wounds_delta(character, amount - current, why)
+        return
+
+    stat_match = _STAT_CMD_RE.match(cmd)
+    if stat_match:
+        alias, op, expr = stat_match.group(1), stat_match.group(2), stat_match.group(3)
+        short = _STAT_SHORT[alias.lower()]
+        why = '{}: {}'.format(reason, cmd)
+        amount = eval_amount(expr)
+        if op == '+':
+            _apply_stat_delta(character, short, amount, why)
+        elif op == '-':
+            _apply_stat_delta(character, short, -amount, why)
+        elif op == '=':
+            current = (
+                CharacterParameter.objects
+                .filter(character=character, parameter__short_name=short)
+                .aggregate(total=Sum('value'))['total']
+            ) or 0
+            _apply_stat_delta(character, short, amount - current, why)
+        return
+
+    treasure_match = _ITEM_TREASURE_CMD_RE.match(cmd)
+    if treasure_match:
+        op, expr = treasure_match.group(1), treasure_match.group(2)
+        count = max(1, eval_amount(expr))
+        if op == '-':
+            _remove_random_equipment(character, count, '{}: {}'.format(reason, cmd))
+        return
+
+    party_gold_match = _PARTY_GOLD_CMD_RE.match(cmd)
+    if party_gold_match:
+        if character.leader_id != character.pk:
+            return
+        op, expr = party_gold_match.group(1), party_gold_match.group(2)
+        amount = eval_amount(expr)
+        for member in Character.objects.filter(leader=character):
+            why = '{}: {}'.format(reason, cmd)
+            if op == '+':
+                member.add_gold(amount, why)
+            elif op == '-':
+                member.remove_gold(amount, why)
+        return
+
+    if _SCORPION_CMD_RE.match(cmd):
+        _resolve_scorpion_swarm(character, reason)
+        return
+
+    if _GOLD_DIGGER_CURSE_RE.match(cmd):
+        if character.leader_id != character.pk:
+            return
+        for member in Character.objects.filter(leader=character):
+            if (Roll('1D6') or 1) == 1:
+                _apply_stat_delta(
+                    member,
+                    'T',
+                    -1,
+                    '{}: gold digger curse'.format(reason),
+                )
+        return
+
     logger.error('Unsupported event command: %r', cmd)
+
+
+def _apply_wounds_delta(character, delta, reason):
+    if not delta:
+        return
+    CharacterParameter.objects.create(
+        character=character,
+        parameter=Parameter.objects.get(short_name='W'),
+        value=delta,
+        description=reason,
+    )
+
+
+def _apply_stat_delta(character, short_name, delta, reason):
+    if not delta:
+        return
+    CharacterParameter.objects.create(
+        character=character,
+        parameter=Parameter.objects.get(short_name=short_name),
+        value=delta,
+        description=reason,
+    )
+
+
+def _remove_random_equipment(character, count, reason):
+    from apps.game.models import Equipment
+    qs = list(Equipment.objects.filter(owner=character).order_by('?')[:count])
+    for equipment in qs:
+        logger.error('Removing equipment %s from %s (%s)', equipment, character, reason)
+        equipment.delete()
+
+
+def _resolve_scorpion_swarm(character, reason):
+    totals = character.get_parameter_totals()
+    strength = (totals.get('strength') or {}).get('value') or 0
+    kills = min(12, (Roll('1D6') or 1) + strength)
+    remaining = 12 - kills
+    if kills:
+        character.add_gold(kills * 5, '{}: scorpion kills x5'.format(reason))
+    if remaining:
+        _apply_wounds_delta(character, -remaining, '{}: scorpion swarm'.format(reason))
 
 
 def _apply_party_event_delta(leader, delta):
@@ -160,6 +324,28 @@ def _apply_party_event_delta(leader, delta):
             Event.objects.filter(Q(pk=root_id) | Q(leader_event_id=root_id)).update(done=True)
 
 
+def roll_unexpected_dungeon_event(leader):
+    """Roll d66 for a Dungeon Events template and add it for the party."""
+    for _ in range(36):
+        event_roll = int('{}{}'.format(Roll('1D6'), Roll('1D6')))
+        try:
+            template = EventTemplate.objects.get(
+                number=event_roll,
+                event_type__name='Dungeon Events',
+            )
+        except EventTemplate.DoesNotExist:
+            continue
+        add_party_event(template, leader)
+        return template
+
+    template = EventTemplate.objects.filter(event_type__name='Dungeon Events').order_by('?').first()
+    if template is None:
+        logger.error('No Dungeon Events templates available')
+        return None
+    add_party_event(template, leader)
+    return template
+
+
 def warrior_event(character, event_template, tasks, leader_event=None, description_context={}, obligatory_commands=[]):
     try:
         drawn_warrior = description_context['drawn_warrior']
@@ -170,50 +356,64 @@ def warrior_event(character, event_template, tasks, leader_event=None, descripti
     conditional_commands = {}
     alternative_commands = {}
     character_1D6 = str(Roll('1D6'))
-    try:  # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
-        description_context['each_warrior_print'] = tasks["0"]["each_warrior_print"]
+    party_table = bool(description_context.get('party_table'))
+
+    # Preserve prints/commands already set from the party roll in add_party_event.
+    description_context['each_warrior_print'] = description_context.get('each_warrior_print') or ''
+    description_context['each_warrior_command'] = description_context.get('each_warrior_command') or ''
+    description_context['drawn_warrior_print'] = description_context.get('drawn_warrior_print') or ''
+    description_context['drawn_warrior_command'] = description_context.get('drawn_warrior_command') or ''
+    description_context['not_drawn_warrior_print'] = description_context.get('not_drawn_warrior_print') or ''
+    description_context['not_drawn_warrior_command'] = description_context.get('not_drawn_warrior_command') or ''
+    description_context['party_print'] = description_context.get('party_print') or ''
+
+    try:  # polecenia dla kazdego ale kazdy moze miec inne
+        description_context['each_warrior_print'] += tasks["0"]["each_warrior_print"]
         description_context['each_warrior_command'] += tasks["0"]["each_warrior_command"]
         obligatory_commands += tasks["0"]["each_warrior_command"].split(";")
     except KeyError:
         pass
-    try:  # polecenia dla każdego po losowaniu wstępnym
-        description_context['each_warrior_print'] += tasks[character_1D6]["each_warrior_print"]
-        description_context['each_warrior_command'] += tasks[character_1D6]["each_warrior_command"]
-        obligatory_commands += tasks[character_1D6]["each_warrior_command"].split(";")
-    except KeyError:
-        pass
+    if not party_table:
+        try:  # polecenia dla każdego po losowaniu wstępnym
+            description_context['each_warrior_print'] += tasks[character_1D6]["each_warrior_print"]
+            description_context['each_warrior_command'] += tasks[character_1D6]["each_warrior_command"]
+            obligatory_commands += tasks[character_1D6]["each_warrior_command"].split(";")
+        except KeyError:
+            pass
 
     if character == drawn_warrior:
-        drawn_character_1D6 = str(Roll('1D6'))
-        try:  # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
+        try:
             description_context['drawn_warrior_print'] += tasks["0"]["drawn_warrior_print"]
             description_context['drawn_warrior_command'] += tasks["0"]["drawn_warrior_command"]
             obligatory_commands += tasks["0"]["drawn_warrior_command"].split(";")
         except KeyError:
             pass
-        try:  # polecenia dla każdego po losowaniu wstępnym
-            description_context['drawn_warrior_print'] += tasks[drawn_character_1D6]["drawn_warrior_print"]
-            description_context['drawn_warrior_command'] += tasks[drawn_character_1D6]["drawn_warrior_command"]
-            obligatory_commands += tasks[drawn_character_1D6]["drawn_warrior_command"].split(";")
-        except KeyError:
-            pass
+        if not party_table:
+            drawn_character_1D6 = str(Roll('1D6'))
+            try:
+                description_context['drawn_warrior_print'] += tasks[drawn_character_1D6]["drawn_warrior_print"]
+                description_context['drawn_warrior_command'] += tasks[drawn_character_1D6]["drawn_warrior_command"]
+                obligatory_commands += tasks[drawn_character_1D6]["drawn_warrior_command"].split(";")
+            except KeyError:
+                pass
     else:
-        not_drawn_character_1D6 = str(Roll('1D6'))
-        try:  # polecenia dla kazdego ale kazdy moze miec inne - każdy dostaje tyle ile wylosuje x20 zł
+        try:
             description_context['not_drawn_warrior_print'] += tasks["0"]["not_drawn_warrior_print"]
             description_context['not_drawn_warrior_command'] += tasks["0"]["not_drawn_warrior_command"]
             obligatory_commands += tasks["0"]["not_drawn_warrior_command"].split(";")
         except KeyError:
             pass
-        try:  # polecenia dla każdego po losowaniu wstępnym
-            description_context['not_drawn_warrior_print'] += tasks[not_drawn_character_1D6]["not_drawn_warrior_print"]
-            description_context['not_drawn_warrior_command'] += tasks[
-                not_drawn_character_1D6
-            ]["not_drawn_warrior_command"]
+        if not party_table:
+            not_drawn_character_1D6 = str(Roll('1D6'))
+            try:
+                description_context['not_drawn_warrior_print'] += tasks[not_drawn_character_1D6]["not_drawn_warrior_print"]
+                description_context['not_drawn_warrior_command'] += tasks[
+                    not_drawn_character_1D6
+                ]["not_drawn_warrior_command"]
 
-            obligatory_commands += tasks[not_drawn_character_1D6]["not_drawn_warrior_command"].split(";")
-        except KeyError:
-            pass
+                obligatory_commands += tasks[not_drawn_character_1D6]["not_drawn_warrior_command"].split(";")
+            except KeyError:
+                pass
     try:
         party_option = tasks["0"]["party_options"]  # Na to pytanie odpowiada Lider - reszta czeka
         if character != character.leader:
@@ -348,6 +548,7 @@ def add_party_event(event_template, leader):
     party_1D6 = str(Roll('1D6'))
     party_context = {
         'drawn_warrior': drawn_warrior,
+        'drawn_warrior_name': drawn_warrior.name,
         'party_print': '',
         'party_command': '',
         'each_warrior_print': '',
@@ -362,29 +563,64 @@ def add_party_event(event_template, leader):
 
     }
     party_obligatory_commands = []
+    drawn_obligatory_commands = []
     try:
         tasks = json.loads(event_template.command)
     except json.JSONDecodeError:
         tasks = {}
 
     zero_task = tasks.get("0") or {}
-    if "party_print" in zero_task:
-        party_context['party_print'] = zero_task["party_print"]
-    if "party_command" in zero_task:
-        party_context['party_command'] += zero_task["party_command"]
-        party_obligatory_commands += _split_commands(zero_task["party_command"])
+    party_table = bool(zero_task.get("party_table"))
+    party_context['party_table'] = party_table
 
+    def _merge_party_meta(task):
+        if not task:
+            return
+        if "party_print" in task:
+            party_context['party_print'] += task["party_print"]
+        if "party_command" in task:
+            party_context['party_command'] += task["party_command"]
+            party_obligatory_commands.extend(_split_commands(task["party_command"]))
+
+    def _merge_party_warrior_effects(task):
+        if not task:
+            return
+        if "each_warrior_print" in task:
+            party_context['each_warrior_print'] += task["each_warrior_print"]
+        if "each_warrior_command" in task:
+            party_context['each_warrior_command'] += task["each_warrior_command"]
+            party_obligatory_commands.extend(_split_commands(task["each_warrior_command"]))
+        if "drawn_warrior_print" in task:
+            party_context['drawn_warrior_print'] += task["drawn_warrior_print"]
+        if "drawn_warrior_command" in task:
+            party_context['drawn_warrior_command'] += task["drawn_warrior_command"]
+            drawn_obligatory_commands.extend(_split_commands(task["drawn_warrior_command"]))
+
+    _merge_party_meta(zero_task)
     rolled_task = tasks.get(party_1D6) or {}
-    if "party_print" in rolled_task:
-        party_context['party_print'] += rolled_task["party_print"]
-    if "party_command" in rolled_task:
-        party_context['party_command'] += rolled_task["party_command"]
-        party_obligatory_commands += _split_commands(rolled_task["party_command"])
+    _merge_party_meta(rolled_task)
+    if party_table:
+        _merge_party_warrior_effects(rolled_task)
+
+    def _commands_for(character):
+        cmds = list(party_obligatory_commands)
+        if character.pk == drawn_warrior.pk:
+            cmds.extend(drawn_obligatory_commands)
+        return cmds
+
     # --- najpierw leader
-    leader_event = warrior_event(leader, event_template, tasks, None, party_context.copy(), party_obligatory_commands)
+    leader_event = warrior_event(
+        leader, event_template, tasks, None, party_context.copy(), _commands_for(leader)
+    )
     leader_event.leader_event = leader_event
     leader_event.save()
     # --- potem reszta
     for character in Character.objects.filter(leader=leader).exclude(pk=leader.pk):
-        warrior_event(character, event_template, tasks, leader_event, party_context.copy(), party_obligatory_commands)
-    #        messages.info(request, 'added event {} to {}'.format(event.title, character))
+        warrior_event(
+            character,
+            event_template,
+            tasks,
+            leader_event,
+            party_context.copy(),
+            _commands_for(character),
+        )
