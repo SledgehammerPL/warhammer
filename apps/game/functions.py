@@ -11,6 +11,7 @@ import logging
 logger = logging.getLogger('error_logger')
 
 _DICE_RE = re.compile(r'(\d+)D(\d+)', re.IGNORECASE)
+_DICE_TOKEN_RE = re.compile(r'\d+D\d+', re.IGNORECASE)
 _GOLD_CMD_RE = re.compile(r'^gold([+/=-])(.+)$', re.IGNORECASE)
 _EVENT_CMD_RE = re.compile(r'^event([+-])(.+)$', re.IGNORECASE)
 _DUNGEON_EVENT_CMD_RE = re.compile(r'^dungeon_event([+-])(.+)$', re.IGNORECASE)
@@ -96,6 +97,39 @@ def eval_amount(expr):
     if not re.fullmatch(r'[\d\s+\-*/()]+', replaced):
         raise ValueError('invalid amount expression: {!r}'.format(expr))
     return int(_eval_ast(ast.parse(replaced, mode='eval')))
+
+
+def resolve_dice_in_text(text, roll_cache=None):
+    """Replace dice tokens (e.g. 4D6) with rolled values. Shared cache keeps command and text in sync."""
+    if text is None:
+        return text, roll_cache if roll_cache is not None else {}
+    if roll_cache is None:
+        roll_cache = {}
+    text = str(text)
+
+    def repl(match):
+        token = match.group(0)
+        key = token.upper()
+        if key not in roll_cache:
+            rolled = Roll(token)
+            roll_cache[key] = rolled if rolled is not None else 0
+        return str(roll_cache[key])
+
+    return _DICE_TOKEN_RE.sub(repl, text), roll_cache
+
+
+def resolve_commands_dice(commands, roll_cache=None):
+    """Resolve dice inside command tokens, e.g. Wounds-4D6 → Wounds-15."""
+    if roll_cache is None:
+        roll_cache = {}
+    resolved = []
+    for raw in commands:
+        if not isinstance(raw, str):
+            continue
+        new_cmd, roll_cache = resolve_dice_in_text(raw, roll_cache)
+        if new_cmd.strip():
+            resolved.append(new_cmd.strip())
+    return resolved, roll_cache
 
 
 def _split_commands(raw):
@@ -368,9 +402,10 @@ def warrior_event(character, event_template, tasks, leader_event=None, descripti
     description_context['party_print'] = description_context.get('party_print') or ''
 
     try:  # polecenia dla kazdego ale kazdy moze miec inne
-        description_context['each_warrior_print'] += tasks["0"]["each_warrior_print"]
-        description_context['each_warrior_command'] += tasks["0"]["each_warrior_command"]
-        obligatory_commands += tasks["0"]["each_warrior_command"].split(";")
+        if not party_table:
+            description_context['each_warrior_print'] += tasks["0"]["each_warrior_print"]
+            description_context['each_warrior_command'] += tasks["0"]["each_warrior_command"]
+            obligatory_commands += tasks["0"]["each_warrior_command"].split(";")
     except KeyError:
         pass
     if not party_table:
@@ -382,13 +417,13 @@ def warrior_event(character, event_template, tasks, leader_event=None, descripti
             pass
 
     if character == drawn_warrior:
-        try:
-            description_context['drawn_warrior_print'] += tasks["0"]["drawn_warrior_print"]
-            description_context['drawn_warrior_command'] += tasks["0"]["drawn_warrior_command"]
-            obligatory_commands += tasks["0"]["drawn_warrior_command"].split(";")
-        except KeyError:
-            pass
         if not party_table:
+            try:
+                description_context['drawn_warrior_print'] += tasks["0"]["drawn_warrior_print"]
+                description_context['drawn_warrior_command'] += tasks["0"]["drawn_warrior_command"]
+                obligatory_commands += tasks["0"]["drawn_warrior_command"].split(";")
+            except KeyError:
+                pass
             drawn_character_1D6 = str(Roll('1D6'))
             try:
                 description_context['drawn_warrior_print'] += tasks[drawn_character_1D6]["drawn_warrior_print"]
@@ -397,13 +432,13 @@ def warrior_event(character, event_template, tasks, leader_event=None, descripti
             except KeyError:
                 pass
     else:
-        try:
-            description_context['not_drawn_warrior_print'] += tasks["0"]["not_drawn_warrior_print"]
-            description_context['not_drawn_warrior_command'] += tasks["0"]["not_drawn_warrior_command"]
-            obligatory_commands += tasks["0"]["not_drawn_warrior_command"].split(";")
-        except KeyError:
-            pass
         if not party_table:
+            try:
+                description_context['not_drawn_warrior_print'] += tasks["0"]["not_drawn_warrior_print"]
+                description_context['not_drawn_warrior_command'] += tasks["0"]["not_drawn_warrior_command"]
+                obligatory_commands += tasks["0"]["not_drawn_warrior_command"].split(";")
+            except KeyError:
+                pass
             not_drawn_character_1D6 = str(Roll('1D6'))
             try:
                 description_context['not_drawn_warrior_print'] += tasks[not_drawn_character_1D6]["not_drawn_warrior_print"]
@@ -498,8 +533,57 @@ def warrior_event(character, event_template, tasks, leader_event=None, descripti
 
     logger.error('DESCRIPTION CONTEXT:{}'.format(description_context))
 
+    # Roll dice once: bake results into commands and the visible description.
+    roll_cache = dict(description_context.get('_dice_cache') or {})
+    obligatory_commands, roll_cache = resolve_commands_dice(obligatory_commands, roll_cache)
+    for print_key in (
+        'party_print',
+        'each_warrior_print',
+        'drawn_warrior_print',
+        'not_drawn_warrior_print',
+        'each_warrior_choice_print',
+    ):
+        if description_context.get(print_key):
+            description_context[print_key], roll_cache = resolve_dice_in_text(
+                description_context[print_key], roll_cache
+            )
+
+    for question_spec in conditional_commands.values():
+        if question_spec.get('choice_print'):
+            question_spec['choice_print'], roll_cache = resolve_dice_in_text(
+                question_spec['choice_print'], roll_cache
+            )
+        if question_spec.get('choice_command'):
+            question_spec['choice_command'], roll_cache = resolve_commands_dice(
+                question_spec['choice_command'], roll_cache
+            )
+
+    party_options = alternative_commands.get('party_option') or {}
+    for option_spec in party_options.values():
+        if option_spec.get('option_command'):
+            option_spec['option_command'], roll_cache = resolve_commands_dice(
+                option_spec['option_command'], roll_cache
+            )
+    for key, option_spec in alternative_commands.items():
+        if key == 'party_option' or not isinstance(option_spec, dict):
+            continue
+        if option_spec.get('choice_print'):
+            option_spec['choice_print'], roll_cache = resolve_dice_in_text(
+                option_spec['choice_print'], roll_cache
+            )
+        if option_spec.get('choice_command'):
+            option_spec['choice_command'], roll_cache = resolve_commands_dice(
+                option_spec['choice_command'], roll_cache
+            )
+
+    for token, value in roll_cache.items():
+        description_context['roll_{}'.format(token)] = value
+
     before_form = Template("{}".format(event_template.before_form)).render(Context(description_context))
     after_form = Template("{}".format(event_template.after_form)).render(Context(description_context))
+    before_form, roll_cache = resolve_dice_in_text(before_form, roll_cache)
+    after_form, roll_cache = resolve_dice_in_text(after_form, roll_cache)
+
     commands = {
         'obligatory': obligatory_commands,
         'conditional': conditional_commands,
@@ -564,6 +648,7 @@ def add_party_event(event_template, leader):
     }
     party_obligatory_commands = []
     drawn_obligatory_commands = []
+    dice_cache = {}
     try:
         tasks = json.loads(event_template.command)
     except json.JSONDecodeError:
@@ -572,35 +657,52 @@ def add_party_event(event_template, leader):
     zero_task = tasks.get("0") or {}
     party_table = bool(zero_task.get("party_table"))
     party_context['party_table'] = party_table
+    party_context['_dice_cache'] = dice_cache
 
     def _merge_party_meta(task):
         if not task:
             return
         if "party_print" in task:
-            party_context['party_print'] += task["party_print"]
+            text, party_context['_dice_cache'] = resolve_dice_in_text(
+                task["party_print"], party_context['_dice_cache']
+            )
+            party_context['party_print'] += text
         if "party_command" in task:
+            cmds, party_context['_dice_cache'] = resolve_commands_dice(
+                _split_commands(task["party_command"]), party_context['_dice_cache']
+            )
             party_context['party_command'] += task["party_command"]
-            party_obligatory_commands.extend(_split_commands(task["party_command"]))
+            party_obligatory_commands.extend(cmds)
 
     def _merge_party_warrior_effects(task):
         if not task:
             return
         if "each_warrior_print" in task:
+            # Per-warrior dice (e.g. Wounds-1D6 each) are resolved later in warrior_event.
             party_context['each_warrior_print'] += task["each_warrior_print"]
         if "each_warrior_command" in task:
             party_context['each_warrior_command'] += task["each_warrior_command"]
             party_obligatory_commands.extend(_split_commands(task["each_warrior_command"]))
-        if "drawn_warrior_print" in task:
-            party_context['drawn_warrior_print'] += task["drawn_warrior_print"]
         if "drawn_warrior_command" in task:
-            party_context['drawn_warrior_command'] += task["drawn_warrior_command"]
-            drawn_obligatory_commands.extend(_split_commands(task["drawn_warrior_command"]))
+            cmds, party_context['_dice_cache'] = resolve_commands_dice(
+                _split_commands(task["drawn_warrior_command"]), party_context['_dice_cache']
+            )
+            drawn_obligatory_commands.extend(cmds)
+        if "drawn_warrior_print" in task:
+            text, party_context['_dice_cache'] = resolve_dice_in_text(
+                task["drawn_warrior_print"], party_context['_dice_cache']
+            )
+            party_context['drawn_warrior_print'] += text
 
     _merge_party_meta(zero_task)
     rolled_task = tasks.get(party_1D6) or {}
     _merge_party_meta(rolled_task)
     if party_table:
+        _merge_party_warrior_effects(zero_task)
         _merge_party_warrior_effects(rolled_task)
+
+    for token, value in party_context['_dice_cache'].items():
+        party_context['roll_{}'.format(token)] = value
 
     def _commands_for(character):
         cmds = list(party_obligatory_commands)

@@ -411,7 +411,7 @@ DUNGEON_EVENT_UPDATES = {
     85: {  # SPIKED PIT
         "before_form": _bf(
             "A spiked pit yawns open!",
-            "{{ drawn_warrior_name }} tumbles in, taking 4D6 Wounds on the stakes below. Escape only "
+            "{{ drawn_warrior_name }} tumbles in, taking {{ roll_4D6 }} Wounds on the stakes below. Escape only "
             "with a rope or Levitate; otherwise they remain trapped.",
             "{{ drawn_warrior_print }}",
             "{{ party_print }}",
@@ -419,7 +419,7 @@ DUNGEON_EVENT_UPDATES = {
         "command": {
             "0": {
                 "party_table": True,
-                "drawn_warrior_print": "You hit the spikes hard.",
+                "drawn_warrior_print": "You hit the spikes hard and take 4D6 Wounds.",
                 "drawn_warrior_command": "Wounds-4D6",
             },
             **DRAW_ON_1_TO_3,

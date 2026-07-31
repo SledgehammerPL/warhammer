@@ -1,6 +1,7 @@
 import json
 
-from django.db import migrations
+import django.db.models.deletion
+from django.db import migrations, models
 
 SNAKES_BEFORE_FORM = """Without warning, hundreds of snakes suddenly drop into the room through carefully concealed holes in the roof. Each Warrior is quickly covered in a writhing mass of venomous serpents.
 
@@ -76,9 +77,25 @@ def revert_snakes_commands(apps, schema_editor):
 class Migration(migrations.Migration):
 
     dependencies = [
-        ('game', '0047_turn_power_reroll'),
+        ('game', '0046_set_helmet_item_flags'),
     ]
 
     operations = [
+        migrations.AddField(
+            model_name='turn',
+            name='power_reroll_for',
+            field=models.ForeignKey(
+                blank=True,
+                null=True,
+                on_delete=django.db.models.deletion.SET_NULL,
+                related_name='power_reroll_turns',
+                to='game.character',
+            ),
+        ),
+        migrations.AddField(
+            model_name='turn',
+            name='power_reroll_pending',
+            field=models.BooleanField(default=False),
+        ),
         migrations.RunPython(apply_snakes_commands, revert_snakes_commands),
     ]
