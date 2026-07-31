@@ -368,17 +368,148 @@ class EventType(models.Model):
     def __str__(self):
         return self.name
 
+
+class Monster(models.Model):
+    """Catalog entry for a Warhammer Quest monster combat profile."""
+
+    name = models.CharField(max_length=100, unique=True)
+    weapon_skill = models.PositiveIntegerField(help_text='WS')
+    ballistic_skill = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        help_text='BS target number (e.g. 5 means 5+); blank if no ranged attack',
+    )
+    strength = models.PositiveIntegerField(help_text='S')
+    toughness = models.PositiveIntegerField(help_text='T')
+    wounds = models.PositiveIntegerField(help_text='W')
+    attacks = models.PositiveIntegerField(help_text='A')
+    move = models.PositiveIntegerField(help_text='Move')
+    gold_value = models.PositiveIntegerField(default=0)
+    battle_level = models.PositiveIntegerField(
+        default=1,
+        help_text='Difficulty / Battle Level used when scaling encounters',
+    )
+    special_rules = models.TextField(
+        blank=True,
+        help_text='Free-text or JSON-encoded special rules from the monster card',
+    )
+
+    class Meta:
+        ordering = ['name']
+
+    def __str__(self):
+        return self.name
+
+    def as_combat_dict(self) -> dict:
+        """Return a plain dict of combat stats for API / combat UI payloads."""
+        return {
+            'id': self.pk,
+            'name': self.name,
+            'WS': self.weapon_skill,
+            'BS': self.ballistic_skill,
+            'S': self.strength,
+            'T': self.toughness,
+            'W': self.wounds,
+            'A': self.attacks,
+            'Move': self.move,
+            'gold_value': self.gold_value,
+            'battle_level': self.battle_level,
+            'special_rules': self.special_rules,
+        }
+
+
 class EventTemplate(models.Model):
+    """Catalog card for dungeon / journey / settlement events.
+
+    For the classic Unexpected Event deck (``EventType`` = 'Dungeon Events'),
+    ``card_kind`` distinguishes Monster encounters (``M``) from Special events
+    (``E``: traps, environment, treasures, etc.).
+    """
+
+    CARD_MONSTER = 'M'
+    CARD_SPECIAL = 'E'
+    CARD_KIND_CHOICES = [
+        (CARD_MONSTER, 'Monster'),
+        (CARD_SPECIAL, 'Special'),
+    ]
+
     number = models.PositiveIntegerField()
-    event_type = models.ForeignKey(EventType, on_delete = models.RESTRICT)
+    event_type = models.ForeignKey(EventType, on_delete=models.RESTRICT)
     title = models.CharField(max_length=100)
     before_form = models.TextField(blank=True)
     after_form = models.TextField(blank=True)
     description_copy = models.TextField(blank=True)
     command = models.TextField(null=False, default="{}")
+    card_kind = models.CharField(
+        max_length=1,
+        choices=CARD_KIND_CHOICES,
+        blank=True,
+        null=True,
+        db_index=True,
+        help_text="M = Monster encounter, E = Special event (blank for non-deck events)",
+    )
+    draw_another_event = models.BooleanField(
+        default=False,
+        help_text='After resolving, draw another Unexpected Event',
+    )
+    draw_treasure = models.BooleanField(
+        default=False,
+        help_text='After resolving (typically after combat), draw a Treasure card',
+    )
+    monsters = models.ManyToManyField(
+        Monster,
+        through='EventTemplateMonster',
+        related_name='event_templates',
+        blank=True,
+    )
 
     def __str__(self):
         return ("{}: {} {}".format(self.event_type.name, self.number, self.title))
+
+    def is_monster_event(self) -> bool:
+        return self.card_kind == self.CARD_MONSTER
+
+    def is_special_event(self) -> bool:
+        return self.card_kind == self.CARD_SPECIAL
+
+
+class EventTemplateMonster(models.Model):
+    """Links an EventTemplate to a Monster with a quantity expression.
+
+    ``quantity`` accepts a fixed number (``"6"``) or a dice expression
+    evaluated by ``eval_amount`` / ``Roll`` (e.g. ``"1D6"``, ``"1D3+1"``).
+    """
+
+    event_template = models.ForeignKey(
+        EventTemplate,
+        on_delete=models.CASCADE,
+        related_name='monster_entries',
+    )
+    monster = models.ForeignKey(
+        Monster,
+        on_delete=models.RESTRICT,
+        related_name='event_entries',
+    )
+    quantity = models.CharField(
+        max_length=32,
+        default='1',
+        help_text='Fixed count or dice expression, e.g. "1D6", "1D3+1", "6"',
+    )
+    sort_order = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ['sort_order', 'id']
+        unique_together = [('event_template', 'monster')]
+
+    def __str__(self):
+        return "{} × {} on {}".format(self.quantity, self.monster.name, self.event_template)
+
+    def resolve_quantity(self) -> int:
+        """Roll / evaluate ``quantity`` and return a non-negative integer count."""
+        from .functions import eval_amount
+
+        return max(0, int(eval_amount(self.quantity)))
+
 
 class Event(models.Model):
     created = models.DateTimeField(auto_now_add=True)
